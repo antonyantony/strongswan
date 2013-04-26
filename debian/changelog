@@ -1,3 +1,13 @@
+strongswan (4.4.1-5.2) stable-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * debian/patches:
+    - 0001-Fix-boolean-return-value-if-an-empty-RSA-signature-i added,
+      backported from upstream. Fix CVE-2012-2388 (when using gmp plugin,
+      zero length RSA signatures are considered valid).
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 24 May 2012 17:12:54 +0200
+
 strongswan (4.4.1-5.1) unstable; urgency=low
 
   * Non-maintainer upload.
