@@ -2,3 +2,4 @@
 *.old
 *.orig
 *.rej
+.pc
