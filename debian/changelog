@@ -1,11 +1,11 @@
-strongswan (4.4.1-5.3) UNRELEASED; urgency=high
+strongswan (4.4.1-5.3) squeeze-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
   * debian/patches:
    - 0001-Check-return-value-of-ECDSA_Verify-correctly added. Fix ECDSA
      signature verification when using openssl plugin (CVE-2013-2944).
 
- -- Yves-Alexis Perez <corsac@debian.org>  Fri, 26 Apr 2013 07:48:14 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 29 Apr 2013 11:25:24 +0200
 
 strongswan (4.4.1-5.2) stable-security; urgency=high
 
