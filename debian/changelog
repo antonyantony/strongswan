@@ -1,3 +1,12 @@
+strongswan (4.5.2-1.5+deb7u2) wheezy-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * debian/patches
+    - CVE-2013-6075 added, fix remote denial of service and authorization
+      bypass.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 29 Oct 2013 19:24:14 +0100
+
 strongswan (4.5.2-1.5+deb7u1) wheezy-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
