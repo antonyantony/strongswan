@@ -1,3 +1,9 @@
+strongswan (5.1.0-3~bpo70+1) wheezy-backports; urgency=low
+
+  * Rebuild for wheezy-backports.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 05 Nov 2013 20:05:47 +0100
+
 strongswan (5.1.0-3) unstable; urgency=high
 
   * urgency=high for the security fixes.
