@@ -12,13 +12,15 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-eap-radius --enable-eap-identity --enable-eap-md5 \
 		--enable-eap-gtc --enable-eap-aka --enable-eap-mschapv2 \
 		--enable-eap-tls --enable-eap-ttls --enable-eap-tnc \
-		--enable-sql --enable-integrity-test \
 		--enable-ha \
 		--enable-led --enable-gcrypt \
 		--enable-test-vectors \
 		--enable-xauth-eap --enable-xauth-pam \
-		--enable-attr-sql \
 		--enable-cmd \
+		--enable-certexpire \
+		--enable-lookip \
+		--enable-error-notify \
+		--enable-unity \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
@@ -45,7 +47,8 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	CONFIGUREARGS += --enable-nm \
 		--with-capabilities=libcap \
 		--enable-farp \
-		--enable-dhcp
+		--enable-dhcp \
+		--enable-af-alg
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
@@ -71,7 +74,7 @@ override_dh_auto_clean:
 
 	# just in case something went wrong
 	rm -f $(CURDIR)/debian/ipsec.secrets
-	
+
 	# and make sure that template are up-to-date
 	debconf-updatepo
 
@@ -84,6 +87,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-dhcp.so
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-farp.so
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-kernel-netlink.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-af-alg.so
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
@@ -109,8 +113,9 @@ endif
 		-Xlibstrongswan-kernel \
 		-Xlibstrongswan-dhcp.so \
 		-Xlibstrongswan-farp.so \
-	 	-Xlibstrongswan-padlock.so \
-	 	-Xlibstrongswan-rdrand.so
+		-Xlibstrongswan-padlock.so \
+		-Xlibstrongswan-rdrand.so \
+		-Xlibstrongswan-af-alg.so
 
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
