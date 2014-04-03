@@ -1,3 +1,11 @@
+strongswan (4.5.2-1.5+deb7u3) UNRELEASED; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * debian/patches:
+    - CVE-2014-2338-4.x added, fix authentication bypass (CVE-2014-2338).
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 03 Apr 2014 21:19:49 +0200
+
 strongswan (4.5.2-1.5+deb7u2) wheezy-security; urgency=high
 
   * Non-maintainer upload by the Security Team.

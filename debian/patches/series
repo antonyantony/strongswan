@@ -4,3 +4,4 @@ debian-changes-4.5.2-1.1
 0001-Added-support-for-the-resolvconf-framework-in-resolv.patch
 0001-Check-return-value-of-ECDSA_Verify-correctly.patch
 CVE-2013-6075.patch
+CVE-2014-2338-4.x.patch
