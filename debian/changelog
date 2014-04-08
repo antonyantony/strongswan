@@ -1,3 +1,9 @@
+strongswan (5.1.2-4~bpo70+1) wheezy-backports; urgency=low
+
+  * Rebuild for wheezy-backports.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 08 Apr 2014 20:29:43 +0200
+
 strongswan (5.1.2-4) unstable; urgency=high
 
   * debian/patches/04_cve-2014-2338.patch: added to fix CVE-2014-2338
