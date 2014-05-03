@@ -5,3 +5,4 @@ debian-changes-4.5.2-1.1
 0001-Check-return-value-of-ECDSA_Verify-correctly.patch
 CVE-2013-6075.patch
 CVE-2014-2338-4.x.patch
+CVE-2014-2891.patch
