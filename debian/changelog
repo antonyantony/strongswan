@@ -1,3 +1,12 @@
+strongswan (4.4.1-5.6) squeeze-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * debian/patches:
+    - CVE-2014-2891 added, fix potential null pointer dereference when parsing
+      ASN.1 data, leading to denial of service (CVE-2014-2891).
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 03 May 2014 14:48:15 +0200
+
 strongswan (4.4.1-5.5) squeeze-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
