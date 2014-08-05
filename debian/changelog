@@ -1,3 +1,9 @@
+strongswan (5.2.0-2~bpo70+1) wheezy-backports; urgency=medium
+
+  * Rebuild for wheezy-backports.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 05 Aug 2014 22:01:59 +0200
+
 strongswan (5.2.0-2) unstable; urgency=medium
 
   * Add systemd integration:
