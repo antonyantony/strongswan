@@ -1,3 +1,19 @@
+strongswan (5.2.0-2) unstable; urgency=medium
+
+  * Add systemd integration:
+    + Install upstream systemd service file in strongswan-starter.
+    + Alias strongswan.service to ipsec.service to match the sysv init script.
+    + Drop After=syslog.target (as syslog is socket-activated nowadays), but
+      add After=network.target to ensure that charon gets the chance to send
+      deletes on exit.
+    + Add ExecReload for reload action, since the starter script has one.
+    + On linux-any, add build-dep on systemd to ensure that the pkg-config
+      metadata file can be found.
+    + Add build-dep on dh-systemd, and use systemd dh addon.
+  * Remove debian/patches/03_include-stdint.patch.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Wed, 30 Jul 2014 21:37:53 +0200
+
 strongswan (5.2.0-1~bpo70+1) wheezy-backports; urgency=medium
 
   * Rebuild for wheezy-backports.
