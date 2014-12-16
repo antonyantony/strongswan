@@ -1,11 +1,11 @@
-strongswan (4.5.2-1.5+deb7u4.1) UNRELEASED; urgency=high
+strongswan (4.5.2-1.5+deb7u5) wheezy-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
   * debian/patches:
     - debian/patches/CVE-2014-9221_modp_custom added, fix unauthenticated
       denial of service in IKEv2 when using custom MODP value.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Sun, 14 Dec 2014 14:31:43 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 16 Dec 2014 11:18:58 +0100
 
 strongswan (4.5.2-1.5+deb7u4) wheezy-security; urgency=high
 
