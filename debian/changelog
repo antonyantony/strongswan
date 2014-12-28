@@ -1,3 +1,11 @@
+strongswan (4.5.2-1.5+deb7u6) UNRELEASED; urgency=medium
+
+  * debian/patches:
+    - CVE-2014-9221_dh_group added, fix regression with
+      CVE-2014-9221_modp_custom breaking TLS authentication.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 28 Dec 2014 14:50:11 +0100
+
 strongswan (4.5.2-1.5+deb7u5) wheezy-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
