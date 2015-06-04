@@ -8,3 +8,4 @@ CVE-2014-2338-4.x.patch
 CVE-2014-2891.patch
 CVE-2014-9221_modp_custom.patch
 CVE-2014-9221_dh_group.patch
+CVE-2015-4171_enforce_remote_auth.patch

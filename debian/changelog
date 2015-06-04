@@ -1,3 +1,12 @@
+strongswan (4.5.2-1.5+deb7u7) UNRELEASED; urgency=medium
+
+  * debian/patches:
+    - CVE-2015-4171_enforce_remote_auth added, fix potential leak of
+    authentication credential to rogue server when using PSK or EAP. This is
+    CVE-2015-4171.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 04 Jun 2015 09:21:08 +0200
+
 strongswan (4.5.2-1.5+deb7u6) wheezy-security; urgency=high
 
   * debian/patches:
