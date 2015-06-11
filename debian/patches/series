@@ -4,3 +4,4 @@ debian-changes-4.4.1-5
 CVE-2013-6075.patch
 CVE-2014-2338-4.x.patch
 CVE-2014-2891.patch
+CVE-2015-4171_enforce_remote_auth.patch
