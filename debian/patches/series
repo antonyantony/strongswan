@@ -4,3 +4,4 @@
 04_disable-libtls-tests.patch
 CVE-2014-9221_modp_custom.patch
 CVE-2015-4171_enforce_remote_auth.patch
+CVE-2015-8023_eap_mschapv2_state.patch
