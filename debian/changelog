@@ -1,10 +1,10 @@
-strongswan (4.5.2-1.5+deb7u8) UNRELEASED; urgency=medium
+strongswan (4.5.2-1.5+deb7u8) wheezy-security; urgency=medium
 
   * debian/patches:
     - CVE-2015-8023_eap_mschapv2_state added, fix authentication bypass when
     using EAP MSCHAPv2.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Tue, 10 Nov 2015 11:15:19 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 16 Nov 2015 12:26:13 +0100
 
 strongswan (4.5.2-1.5+deb7u7) wheezy-security; urgency=high
 
