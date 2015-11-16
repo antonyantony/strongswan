@@ -1,3 +1,9 @@
+strongswan (5.2.1-6+deb8u2~bpo70+1) wheezy-backports; urgency=medium
+
+  * Rebuild for wheezy-backports.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Mon, 16 Nov 2015 14:31:53 +0100
+
 strongswan (5.2.1-6+deb8u2) jessie-security; urgency=medium
 
   * debian/patches:
