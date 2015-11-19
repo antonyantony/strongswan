@@ -1,11 +1,11 @@
-strongswan (4.4.1-5.8) UNRELEASED; urgency=high
+strongswan (4.4.1-5.8) squeeze-lts; urgency=high
 
   * Non-maintainer upload by the Security Team.
   * debian/patches:
     - CVE-2015-8023_eap_mschapv2_state added, fix authentication bypass when
     using EAP MSCHAPv2.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Tue, 10 Nov 2015 16:21:48 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 19 Nov 2015 13:33:19 +0100
 
 strongswan (4.4.1-5.7) squeeze-lts; urgency=high
 
