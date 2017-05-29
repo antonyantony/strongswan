@@ -1,4 +1,4 @@
-strongswan (5.2.1-6+deb8u3) UNRELEASED; urgency=medium
+strongswan (5.2.1-6+deb8u3) jessie-security; urgency=medium
 
   * debian/patches:
     - CVE-2017-9022_insufficient_input_validation_gmp_plugin added, fix
@@ -12,7 +12,7 @@ strongswan (5.2.1-6+deb8u3) UNRELEASED; urgency=medium
     - disable the vectors test which is failing right now for unknown reason
     (maybe due to an OpenSSL regression)
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 29 May 2017 20:17:07 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 29 May 2017 21:22:54 +0200
 
 strongswan (5.2.1-6+deb8u2) jessie-security; urgency=medium
 
