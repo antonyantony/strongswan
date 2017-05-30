@@ -2,10 +2,6 @@
 export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1
 #export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1 -Wl,-z,defs
 export DEB_BUILD_MAINT_OPTIONS=hardening=+all
-# the vectors test is failing now, maybe because of an OpenSSL regression
-# disable the for now so we meet the CRD for CVE-2017-902{2,3}
-# Yves-Alexis Perez / 20170529
-export TESTS_SUITES_EXCLUDE="vectors"
 
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-ldap --enable-curl \
