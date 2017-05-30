@@ -1,4 +1,4 @@
-strongswan (5.2.1-6+deb8u4) UNRELEASED; urgency=medium
+strongswan (5.2.1-6+deb8u4) jessie-security; urgency=medium
 
   * debian/rules:
     - revert disabling of vectors test
@@ -6,7 +6,7 @@ strongswan (5.2.1-6+deb8u4) UNRELEASED; urgency=medium
     - 0001-openssl-Don-t-pre-initialize-OpenSSL-HMAC-with-an-em added,
     backported from upstream, fix HMAC initialization with recent OpenSSL.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Tue, 30 May 2017 10:05:04 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 30 May 2017 10:07:29 +0200
 
 strongswan (5.2.1-6+deb8u3) jessie-security; urgency=medium
 
