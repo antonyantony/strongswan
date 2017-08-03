@@ -3,6 +3,9 @@ strongswan (5.5.1-5) UNRELEASED; urgency=medium
   * debian/patches:
     - CVE-2017-11185 added, fix insufficient input validation in gmp plugin
     which could lead to denial of service (CVE-2017-11185)
+    - convert CVE-2017-9022_insufficient_input_validation_gmp_plugin and
+    CVE-2017-9023_incorrect_handling_of_choice_types_in_asn1_parser to the
+    UNIX file format. 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 03 Aug 2017 21:24:33 +0200
 
