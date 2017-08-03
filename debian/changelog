@@ -1,10 +1,10 @@
-strongswan (5.2.1-6+deb8u5) UNRELEASED; urgency=medium
+strongswan (5.2.1-6+deb8u5) jessie-security; urgency=medium
 
   * debian/patches:
     - CVE-2017-11185 added, fix insufficient validation in gmp plugin
     (CVE-2017-11185)
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 03 Aug 2017 20:58:30 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 03 Aug 2017 21:00:12 +0200
 
 strongswan (5.2.1-6+deb8u4) jessie-security; urgency=medium
 
