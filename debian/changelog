@@ -1,4 +1,4 @@
-strongswan (5.5.1-4+deb9u2) UNRELEASED; urgency=medium
+strongswan (5.5.1-4+deb9u2) stretch-security; urgency=medium
 
   * debian/patches:
     - CVE-2018-10811 added, fix missing initialization of a variable in IKEv2
@@ -6,7 +6,7 @@ strongswan (5.5.1-4+deb9u2) UNRELEASED; urgency=medium
     - CVE-2018-5388 added, fix insufficient validation in the stroke plugin
     (CVE-2018-5388)
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 04 Jun 2018 15:59:09 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 04 Jun 2018 17:55:33 +0200
 
 strongswan (5.5.1-4+deb9u1) stretch-security; urgency=medium
 
