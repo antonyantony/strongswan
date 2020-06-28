@@ -2409,6 +2409,41 @@ static bool get_lastused(struct nlmsghdr *hdr, uint64_t *lastused)
 	return FALSE;
 }
 
+static bool sa_confidential(void)
+{
+	FILE *f;
+	bool ret = FALSE;
+	const char lockdown_file[] = "/sys/kernel/security/lockdown";
+	char lockdown[] = "none integrity [confidentiality]";
+	char buf[sizeof(lockdown)];
+	char confident[] = "[confidentiality]";
+
+	DBG4(DBG_KNL, "Open %s", lockdown_file);
+
+	f = fopen(lockdown_file, "r");
+
+	if (!f) {
+		DBG2(DBG_KNL, "can not open %s", lockdown_file);
+		return ret;
+	}
+
+	if (!fgets(buf, sizeof(buf), f))
+		return ret;
+
+	fclose(f);
+
+	DBG3(DBG_KNL, "%s has %s kernel", lockdown_file, buf);
+
+	if(strstr(buf, confident) != NULL)
+	{
+		DBG1(DBG_KNL, "Charon kernel update_sa would fail %s is set to %s", lockdown_file,
+				confident);
+		return true;
+	}
+
+	return ret;
+}
+
 METHOD(kernel_ipsec_t, query_sa, status_t,
 	private_kernel_netlink_ipsec_t *this, kernel_ipsec_sa_id_t *id,
 	kernel_ipsec_query_sa_t *data, uint64_t *bytes, uint64_t *packets,
@@ -4382,6 +4417,14 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 		destroy(this);
 		return NULL;
 	}
+
+	sa_confidential(); // AA this is an extra one remove it
+
+	this->migrate_enabled = migrate_enabled(this);
+	if (this->migrate_enabled)
+		this->public.interface.update_sa = _migrate_sa;
+	else
+		sa_confidential();
 
 	setup_spd_hash_thresh(this, "ipv4", XFRMA_SPD_IPV4_HTHRESH, 32);
 	setup_spd_hash_thresh(this, "ipv6", XFRMA_SPD_IPV6_HTHRESH, 128);
