@@ -83,6 +83,8 @@ enum kernel_feature_t {
 	KERNEL_SA_USE_TIME = (1<<5),
 	/** IPsec backend associates acquires and SAs with a sequence number */
 	KERNEL_ACQUIRE_SEQ = (1<<6),
+	/** IPsec backend supports migrating SA */
+	KERNEL_MIGRATE = (1<<7),
 };
 
 /**

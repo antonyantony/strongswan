@@ -139,6 +139,10 @@ struct kernel_ipsec_update_sa_t {
 	bool new_encap;
 	/** New reqid, or 0 if unchanged */
 	uint32_t new_reqid;
+	/** Output sequence advance */
+	int32_t oseq_advance;
+	/** TRUE if this is an inbound SA */
+	bool inbound;
 };
 
 /**
