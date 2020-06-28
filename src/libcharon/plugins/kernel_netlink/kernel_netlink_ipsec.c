@@ -43,6 +43,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/utsname.h>
 #include <stdint.h>
 #include <linux/ipsec.h>
 #include <linux/netlink.h>
@@ -341,6 +342,11 @@ struct private_kernel_netlink_ipsec_t {
 	 * Netlink xfrm socket to receive acquire and expire events
 	 */
 	int socket_xfrm_events;
+
+	/**
+	 * Wheather XFRMA_MSG_MIGRATE is enabled
+	 */
+	bool migrate_enabled;
 
 	/**
 	 * Whether to install routes along policies
@@ -1133,10 +1139,96 @@ static bool receive_events(private_kernel_netlink_ipsec_t *this, int fd,
 	return TRUE;
 }
 
+/**
+ * run time check of kernel CONFIG_XFRM_MIGRATE enabled
+ */
+static bool migrate_enabled(private_kernel_netlink_ipsec_t *this)
+{
+	netlink_buf_t request;
+	struct nlmsghdr *hdr, *out = NULL;
+	size_t len;
+	bool ret = FALSE;
+
+	memset(&request, 0, sizeof(request));
+	DBG2(DBG_KNL, "Check CONFIG_XFRM_MIGRATE support in running kernel");
+
+	hdr = &request.hdr;
+	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	hdr->nlmsg_type = XFRM_MSG_MIGRATE;
+	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(struct xfrm_userpolicy_id));
+
+	netlink_reserve(hdr, sizeof(request), XFRMA_MIGRATE,
+					sizeof(struct xfrm_user_migrate));
+
+	if (this->socket_xfrm->send(this->socket_xfrm, hdr, &out, &len) == SUCCESS)
+	{
+		hdr = out;
+		while (NLMSG_OK(hdr, len))
+		{
+			switch (hdr->nlmsg_type)
+			{
+				case NLMSG_ERROR:
+					{
+						struct nlmsgerr *err = NLMSG_DATA(hdr);
+						if (-err->error == ENOPROTOOPT)
+						{
+							DBG1(DBG_KNL, "disable CONFI_XFRM_MIGRATE disabled");
+						}
+						else
+						{
+							ret = TRUE;
+							DBG1(DBG_KNL, "enable XFRM_MSG_MIGRATE %s (%d)",
+									strerror(-err->error), -err->error);
+						}
+						break;
+					}
+				default:
+					hdr = NLMSG_NEXT(hdr, len);
+					continue;
+				case NLMSG_DONE:
+					break;
+			}
+			break;
+		}
+	}
+
+	return ret;
+}
+
+/**
+ * check for kernel version to use migrate (currently only via version number)
+ */
+static bool use_kernel_migrate(void)
+{
+	struct utsname utsname;
+	int a, b;
+	bool ret = FALSE;
+
+	if (uname(&utsname) == 0)
+	{
+		if (sscanf(utsname.release, "%d.%d", &a, &b) == 2)
+		{
+			if (a == 4 && b >= 19)
+				ret = TRUE;
+			else if (a > 5)
+				ret = TRUE;
+		}
+	}
+
+	DBG2(DBG_KNL, "detected Linux %d.%d,%s use XFRMA_MIGRATE for SA update",
+			a, b, ret ? "" : " do not");
+
+	return ret;
+}
+
 METHOD(kernel_ipsec_t, get_features, kernel_feature_t,
 	private_kernel_netlink_ipsec_t *this)
 {
-	return KERNEL_ESP_V3_TFC | KERNEL_POLICY_SPI;
+	int ret = KERNEL_ESP_V3_TFC | KERNEL_POLICY_SPI | KERNEL_NO_POLICY_UPDATES;
+
+	if (use_kernel_migrate() && this->migrate_enabled)
+		ret |= KERNEL_MIGRATE;
+	return ret;
 }
 
 /**
@@ -1507,6 +1599,36 @@ out:
 	return ret;
 }
 
+bool redacted_sa(void)
+{
+    char buf[2];
+    FILE *f;
+    bool ret = FALSE;
+    const char redact_file[] =  "/proc/sys/net/core/xfrm_redact_secret";
+
+	f = fopen(redact_file, "r");
+	if (f)
+	{
+		if (fread(buf, 1, 1, f) == 1)
+		{
+			switch (buf[0])
+			{
+				case '0':
+					break;
+				case '1':
+					DBG1(DBG_KNL, "\"%s\" is enabled dsiable update_sa", redact_file);
+					ret = TRUE;
+					break;
+				default:
+					DBG1(DBG_IMC, "\"%s\" returns invalid value %s", redact_file, buf);
+					break;
+			}
+		}
+		fclose(f);
+	}
+	return ret;
+}
+
 METHOD(kernel_ipsec_t, add_sa, status_t,
 	private_kernel_netlink_ipsec_t *this, kernel_ipsec_sa_id_t *id,
 	kernel_ipsec_add_sa_t *data)
@@ -1557,8 +1679,7 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	memset(&request, 0, sizeof(request));
 	format_mark(markstr, sizeof(markstr), id->mark);
 
-	DBG2(DBG_KNL, "adding SAD entry with SPI %.8x and reqid {%u}%s",
-		 ntohl(id->spi), data->reqid, markstr);
+	DBG1(DBG_KNL, "AA_DEBUG Passed %s %d SAD entry with SPI %.8x from %#H..%#H", __func__, __LINE__, ntohl(id->spi), id->src, id->dst);
 
 	hdr = &request.hdr;
 	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
@@ -2225,6 +2346,106 @@ METHOD(kernel_ipsec_t, del_sa, status_t,
 	}
 }
 
+METHOD(kernel_ipsec_t, migrate_sa, status_t,
+	private_kernel_netlink_ipsec_t *this, kernel_ipsec_sa_id_t *id,
+	kernel_ipsec_update_sa_t *data)
+{
+	netlink_buf_t request;
+	struct nlmsghdr *hdr;
+	struct xfrm_userpolicy_id *policy_id;
+	struct xfrm_user_migrate *migrate;
+	struct xfrm_encap_tmpl* encap = NULL;
+	status_t status = FAILED;
+	char markstr[32] = "";
+
+	memset(&request, 0, sizeof(request));
+	/* Antony add support dscp migrate
+	format_dscp(sina_buf, sizeof(sina_buf), data->dscp);
+	*/
+
+	hdr = &request.hdr;
+	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	hdr->nlmsg_type = XFRM_MSG_MIGRATE;
+	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(struct xfrm_userpolicy_id));
+
+	policy_id = NLMSG_DATA(hdr);
+	policy_id->sel = ts2selector(id->src_ts, id->dst_ts, id->interface);
+	policy_id->dir = id->dir;
+
+	migrate = netlink_reserve(hdr, sizeof(request), XFRMA_MIGRATE,
+			sizeof(struct xfrm_user_migrate));
+
+	if (!migrate)
+	{
+		goto failed;
+	}
+
+	host2xfrm(id->src, &migrate->old_saddr);
+	host2xfrm(id->dst, &migrate->old_daddr);
+
+	host2xfrm(data->new_src, &migrate->new_saddr);
+	host2xfrm(data->new_dst, &migrate->new_daddr);
+
+	migrate->proto = id->proto;
+	migrate->reqid = id->reqid;
+
+	migrate->mode = mode2kernel(id->mode); //add_sa
+
+	migrate->old_family = id->src->get_family(id->src);
+	migrate->new_family = data->new_dst->get_family(data->new_dst);
+
+	/* if IPComp is used, add IPComp SA */
+	if (data->cpi)
+	{
+		struct xfrm_user_migrate * mo = migrate;
+
+		migrate = netlink_reserve(hdr, sizeof(request), XFRMA_MIGRATE,
+								  sizeof(struct xfrm_user_migrate));
+
+		if (!migrate)
+		{
+			goto failed;
+		}
+
+		*migrate = *mo;
+		migrate->proto = IPPROTO_COMP;
+	}
+
+	if(data->new_encap)
+	{
+		encap = netlink_reserve(hdr, sizeof(request), XFRMA_ENCAP,
+								sizeof(struct xfrm_encap_tmpl));
+		if (!encap)
+		{
+			goto failed;
+		}
+
+		// encap->encap_type = get_encap_type(data->legacy_peer);
+		encap->encap_sport = ntohs(data->new_src->get_port(data->new_src));
+		encap->encap_dport = ntohs(data->new_dst->get_port(data->new_dst));
+		memset(&encap->encap_oa, 0, sizeof (xfrm_address_t)); //ASK TE
+	}
+
+	format_mark(markstr, sizeof(markstr), id->mark);
+	DBG2(DBG_KNL, "migrating SAD entry with SPI %.8x%s from %#H..%#H to "
+		 "%#H..%#H", ntohl(id->spi), markstr, id->src, id->dst, data->new_src,
+		 data->new_dst);
+
+	if (this->socket_xfrm->send_ack(this->socket_xfrm, hdr) != SUCCESS)
+	{
+		DBG1(DBG_KNL, "unable to migrate SAD entry with SPI %.8x",
+				ntohl(id->spi));
+		goto failed;
+	}
+
+	status = SUCCESS;
+
+failed:
+	memwipe(&request, sizeof(request));
+
+	return status;
+}
+
 METHOD(kernel_ipsec_t, update_sa, status_t,
 	private_kernel_netlink_ipsec_t *this, kernel_ipsec_sa_id_t *id,
 	kernel_ipsec_update_sa_t *data)
@@ -2245,6 +2466,9 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 	status_t status = FAILED;
 	traffic_selector_t *ts;
 	char markstr[32] = "";
+
+	if (redacted_sa())
+		return NOT_SUPPORTED;
 
 	/* if IPComp is used, we first update the IPComp SA */
 	if (data->cpi)
@@ -2760,6 +2984,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 				host2xfrm(ipsec->dst, &tmpl->id.daddr);
 			}
 
+			DBG1(DBG_KNL, "AA  DEBUG Passed %s %d add XFRMA_TMPL %H===%H mode  %u", __func__, __LINE__, ipsec->src, ipsec->dst, tmpl->mode);
 			tmpl++;
 
 			/* use transport mode for other SAs */
@@ -2932,9 +3157,9 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 		found = TRUE;
 	}
 
-	DBG2(DBG_KNL, "%s policy %R === %R %N%s [priority %u, refcount %d]",
+	DBG1(DBG_KNL, "AA_DEBUG  Passed  %s  %d %s policy %R === %R %N%s [priority %u, refcount %d] reqid %u", __func__, __LINE__,
 		 found ? "updating" : "adding", id->src_ts, id->dst_ts,
-		 policy_dir_names, id->dir, markstr, assigned_sa->priority, use_count);
+		 policy_dir_names, id->dir, markstr, assigned_sa->priority, use_count, data->sa->reqid);
 
 	if (add_policy_internal(this, policy, assigned_sa, found) != SUCCESS)
 	{
@@ -3574,7 +3799,7 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 				.get_spi = _get_spi,
 				.get_cpi = _get_cpi,
 				.add_sa  = _add_sa,
-				.update_sa = _update_sa,
+				.update_sa =  _update_sa,
 				.query_sa = _query_sa,
 				.del_sa = _del_sa,
 				.flush_sas = _flush_sas,
@@ -3618,6 +3843,10 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 		destroy(this);
 		return NULL;
 	}
+
+	this->migrate_enabled = migrate_enabled(this);
+	if (this->migrate_enabled)
+		this->public.interface.update_sa =  _migrate_sa;
 
 	setup_spd_hash_thresh(this, "ipv4", XFRMA_SPD_IPV4_HTHRESH, 32);
 	setup_spd_hash_thresh(this, "ipv6", XFRMA_SPD_IPV6_HTHRESH, 128);

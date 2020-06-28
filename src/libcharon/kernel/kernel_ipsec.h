@@ -57,6 +57,18 @@ struct kernel_ipsec_sa_id_t {
 	mark_t mark;
 	/** Optional interface ID */
 	uint32_t if_id;
+	/** Direction of traffic */
+	policy_dir_t dir;
+	/** Source traffic selector */
+	traffic_selector_t *src_ts;
+	/** Destination traffic selector */
+	traffic_selector_t *dst_ts;
+	/** Network interface restricting policy */
+	char *interface;
+	/** Reqid */
+	uint32_t reqid;
+	/** Mode (tunnel, transport...) */
+	ipsec_mode_t mode;
 };
 
 /**

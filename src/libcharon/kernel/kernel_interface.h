@@ -79,6 +79,8 @@ enum kernel_feature_t {
 	KERNEL_NO_POLICY_UPDATES = (1<<3),
 	/** IPsec backend supports installing SPIs on policies */
 	KERNEL_POLICY_SPI = (1<<4),
+	/** IPsec backend supports migrating SA */
+	KERNEL_MIGRATE = (1<<5),
 };
 
 /**

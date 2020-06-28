@@ -958,6 +958,17 @@ static bool require_policy_update()
 }
 
 /**
+ * Check kernel interface support MIGRATE SA
+ */
+static bool use_xfrm_migrate()
+{
+	kernel_feature_t f;
+
+	f = charon->kernel->get_features(charon->kernel);
+	return (f & KERNEL_MIGRATE);
+}
+
+/**
  * Prepare SA config to install/delete policies
  */
 static void prepare_sa_cfg(private_child_sa_t *this, ipsec_sa_cfg_t *my_sa,
@@ -1026,6 +1037,8 @@ static status_t install_policies_inbound(private_child_sa_t *this,
 		.sa = my_sa,
 	};
 	status_t status = SUCCESS;
+
+	DBG1(DBG_CHD, "AA_DEBUG Passed %s %d install reqid %u policy %R === %R mode %u", __func__, __LINE__, my_sa->reqid, in_id.src_ts, in_id.dst_ts, this->mode);
 
 	status |= charon->kernel->add_policy(charon->kernel, &in_id, &in_policy);
 	if (this->mode != MODE_TRANSPORT)
@@ -1474,53 +1487,86 @@ CALLBACK(reinstall_vip, void,
 static status_t update_sas(private_child_sa_t *this, host_t *me, host_t *other,
 						   bool encap)
 {
-	/* update our (initiator) SA */
-	if (this->my_spi && this->inbound_installed)
-	{
-		kernel_ipsec_sa_id_t id = {
-			.src = this->other_addr,
-			.dst = this->my_addr,
-			.spi = this->my_spi,
-			.proto = proto_ike2ip(this->protocol),
-			.mark = mark_in_sa(this),
-			.if_id = this->if_id_in,
-		};
-		kernel_ipsec_update_sa_t sa = {
-			.cpi = this->ipcomp != IPCOMP_NONE ? this->my_cpi : 0,
-			.new_src = other,
-			.new_dst = me,
-			.encap = this->encap,
-			.new_encap = encap,
-		};
-		if (charon->kernel->update_sa(charon->kernel, &id,
-									  &sa) == NOT_SUPPORTED)
-		{
-			return NOT_SUPPORTED;
-		}
-	}
+	traffic_selector_t *my_ts, *other_ts;
+	enumerator_t *enumerator = create_policy_enumerator(this);
+	ipsec_sa_cfg_t my_sa, other_sa;
 
-	/* update his (responder) SA */
-	if (this->other_spi && (this->outbound_state & CHILD_OUTBOUND_SA))
+
+	DBG1(DBG_CHD, "AA_DEBUG passed %s %d", __func__, __LINE__);
+	prepare_sa_cfg(this, &my_sa, &other_sa);
+	while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
 	{
-		kernel_ipsec_sa_id_t id = {
-			.src = this->my_addr,
-			.dst = this->other_addr,
-			.spi = this->other_spi,
-			.proto = proto_ike2ip(this->protocol),
-			.mark = this->mark_out,
-			.if_id = this->if_id_out,
-		};
-		kernel_ipsec_update_sa_t sa = {
-			.cpi = this->ipcomp != IPCOMP_NONE ? this->other_cpi : 0,
-			.new_src = me,
-			.new_dst = other,
-			.encap = this->encap,
-			.new_encap = encap,
-		};
-		if (charon->kernel->update_sa(charon->kernel, &id,
-									  &sa) == NOT_SUPPORTED)
+		/* update our (initiator) SA */
+		if (this->my_spi && this->inbound_installed)
 		{
-			return NOT_SUPPORTED;
+			kernel_ipsec_sa_id_t id = {
+				.src = this->other_addr,
+				.dst = this->my_addr,
+				.spi = this->my_spi,
+				.proto = proto_ike2ip(this->protocol),
+				.mark = mark_in_sa(this),
+				.if_id = this->if_id_in,
+				.dir = POLICY_IN,
+				.src_ts =  other_ts,
+				.dst_ts = my_ts,
+				.interface = this->config->get_interface(this->config),
+				.reqid = other_sa.reqid,
+				.mode =  this->mode,
+			};
+			kernel_ipsec_update_sa_t sa = {
+				.cpi = this->ipcomp != IPCOMP_NONE ? this->my_cpi : 0,
+				.new_src = other,
+				.new_dst = me,
+				.encap = this->encap,
+				.new_encap = encap,
+			};
+			DBG1(DBG_CHD, "AA_DEBUG Passed %s %d %s SAD entry with SPI %.8x from %#H..%#H to %#H..%#H with policy %R === %R dir %N reqid %u mode %u", __func__, __LINE__, use_xfrm_migrate() ? "migrating" :  "updating", ntohl(id.spi), id.src, id.dst, sa.new_src, sa.new_dst, id.src_ts, id.dst_ts, policy_dir_names, id.dir, id.reqid, id.mode);
+			if (charon->kernel->update_sa(charon->kernel, &id,
+										  &sa) == NOT_SUPPORTED)
+			{
+				return NOT_SUPPORTED;
+			}
+
+			id.dir = POLICY_FWD;
+			if (use_xfrm_migrate() &&
+					charon->kernel->update_sa(charon->kernel, &id,
+						&sa) == NOT_SUPPORTED)
+			{
+				return NOT_SUPPORTED;
+			}
+
+		}
+
+		/* update his (responder) SA */
+		if (this->other_spi && (this->outbound_state & CHILD_OUTBOUND_SA))
+		{
+			kernel_ipsec_sa_id_t id = {
+				.src = this->my_addr,
+				.dst = this->other_addr,
+				.spi = this->other_spi,
+				.proto = proto_ike2ip(this->protocol),
+				.mark = this->mark_out,
+				.if_id = this->if_id_out,
+				.dir = POLICY_OUT,
+				.src_ts = my_ts,
+				.dst_ts = other_ts,
+				.interface = this->config->get_interface(this->config),
+				.reqid = other_sa.reqid,
+				.mode =  this->mode,
+			};
+			kernel_ipsec_update_sa_t sa = {
+				.cpi = this->ipcomp != IPCOMP_NONE ? this->other_cpi : 0,
+				.new_src = me,
+				.new_dst = other,
+				.encap = this->encap,
+				.new_encap = encap,
+			};
+			DBG1(DBG_CHD, "AA_DEBUG Passed %s %d %s SAD entry with SPI %.8x from %#H..%#H to %#H..%#H with policy %R === %R dir %N reqid %u mode %u", __func__, __LINE__, use_xfrm_migrate() ? "migrating" :  "updating", ntohl(id.spi), id.src, id.dst, sa.new_src, sa.new_dst, id.src_ts, id.dst_ts, policy_dir_names, id.dir, id.reqid, id.mode);
+			if (charon->kernel->update_sa(charon->kernel, &id,
+										  &sa) == NOT_SUPPORTED)
+			{
+				return NOT_SUPPORTED;
+			}
 		}
 	}
 	/* we currently ignore the actual return values above */
