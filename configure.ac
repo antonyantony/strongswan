@@ -363,7 +363,7 @@ fi
 # ===========================
 
 if test -z "$CFLAGS"; then
-	CFLAGS="-g -O2 -Wall -Wno-format -Wno-format-security -Wno-pointer-sign"
+	CFLAGS="-g -O0 -Wall -Wno-format -Wno-format-security -Wno-pointer-sign -Werror -Wfatal-errors -Wno-error=stringop-truncation"
 fi
 AC_SUBST(PLUGIN_CFLAGS)
 AC_PROG_CC
