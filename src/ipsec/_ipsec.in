@@ -40,6 +40,8 @@ IPSEC_CHARON_PID="${IPSEC_PIDDIR}/${DAEMON_NAME}.pid"
 IPSEC_STROKE="${IPSEC_DIR}/stroke"
 IPSEC_STARTER="${IPSEC_DIR}/starter"
 
+IPSEC_SWANCTL="${IPSEC_SBINDIR}/swanctl"
+
 export IPSEC_DIR IPSEC_BINDIR IPSEC_SBINDIR IPSEC_CONFDIR IPSEC_PIDDIR IPSEC_SCRIPT IPSEC_VERSION IPSEC_NAME IPSEC_STARTER_PID IPSEC_CHARON_PID
 
 IPSEC_DISTRO="University of Applied Sciences Rapperswil, Switzerland"
@@ -215,6 +217,7 @@ start)
 		touch /var/lock/subsys/ipsec
 	fi
 	exec $IPSEC_STARTER --daemon $DAEMON_NAME "$@"
+	exec $IPSEC_SWANCTL --load-all --noprompt
 	;;
 status|statusall)
 	op="$1"
