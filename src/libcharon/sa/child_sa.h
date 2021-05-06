@@ -370,6 +370,37 @@ struct child_sa_t {
 	uint32_t (*get_if_id)(child_sa_t *this, bool inbound);
 
 	/**
+	 * Get the CPU used with this CHILD_SA.
+	 *
+	 * @param inbound		TRUE to get inbound ID, FALSE for outbound
+	 * @return				CPU used with this CHILD_SA
+	 */
+	uint32_t (*get_cpu)(child_sa_t *this, bool inbound);
+
+	/**
+	 * Set the CPU used with this CHILD_SA.
+	 *
+	 * @param cpu		CPU
+	 * @param inbound		TRUE to get inbound ID, FALSE for outbound
+	 */
+	void (*set_cpu)(child_sa_t *this, uint32_t cpu, bool inbound);
+
+	/**
+	 * Get PCPUS supported for this CHILD_SA.
+	 *
+	 */
+	uint32_t (*get_pcpus)(child_sa_t *this, bool inbound);
+
+	/**
+	 * Set PCPUS supported for this CHILD_SA.
+	 *
+	 * @param pcpus			PCPUS supported
+	 * @param inbound		TRUE to get inbound pcpus, FALSE for outbound
+	 * @return				PCPUS supported
+	 */
+	void (*set_pcpus)(child_sa_t *this, uint32_t pcpus);
+
+	/**
 	 * Create an enumerator over traffic selectors of one side.
 	 *
 	 * @param local		TRUE for own traffic selectors, FALSE for remote.
@@ -533,6 +564,10 @@ struct child_sa_create_t {
 	/** Optional default outbound interface ID, if neither if_id_out, nor config
 	 * sets one */
 	uint32_t if_id_out_def;
+	uint32_t my_pcpus;
+	uint32_t other_pcpus;
+	uint32_t my_cpu;
+	uint32_t other_cpu;
 	/** TRUE to enable UDP encapsulation (NAT traversal) */
 	bool encap;
 };

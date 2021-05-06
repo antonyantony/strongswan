@@ -69,6 +69,23 @@ struct child_create_t {
 	void (*use_if_ids)(child_create_t *this, uint32_t in, uint32_t out);
 
 	/**
+	 * Set other_cpu
+	 *
+	 * @param my_cpu		outbound CPU
+	 * @param other_cpu	inbound CPU
+	 */
+	void (*set_cpus)(child_create_t *this, uint32_t my_cpu, uint32_t other_cpu);
+
+	/**
+	 * Set PCPUS
+	 *
+	 * @param pcpus			pcpus
+	 * @param inbound
+	 *
+	 */
+	void (*set_pcpus)(child_create_t *this, uint32_t pcpus, bool inbound);
+
+	/**
 	 * Initially propose a specific DH group to override configuration.
 	 *
 	 * This is used during rekeying to prefer the previously negotiated group.

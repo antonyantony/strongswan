@@ -1019,6 +1019,9 @@ static status_t process_request(private_task_manager_t *this,
 				array_insert(this->passive_tasks, ARRAY_TAIL, task);
 				task = (task_t*)ike_config_create(this->ike_sa, FALSE);
 				array_insert(this->passive_tasks, ARRAY_TAIL, task);
+
+				DBG0(DBG_IKE, "AA_SN %s %d resolve this cpu where is it "
+						" called", __func__, __LINE__);
 				task = (task_t*)child_create_create(this->ike_sa, NULL, FALSE,
 													NULL, NULL);
 				array_insert(this->passive_tasks, ARRAY_TAIL, task);
@@ -1072,11 +1075,15 @@ static status_t process_request(private_task_manager_t *this,
 				{
 					if (notify_found)
 					{
+						DBG0(DBG_IKE, "AA_SN %s %d resolve this cpu where "
+								"is it called", __func__, __LINE__);
 						task = (task_t*)child_rekey_create(this->ike_sa,
 														   PROTO_NONE, 0);
 					}
 					else
 					{
+						DBG0(DBG_IKE, "AA_SN %s %d resolve this cpu where "
+								"is it called", __func__, __LINE__);
 						task = (task_t*)child_create_create(this->ike_sa, NULL,
 															FALSE, NULL, NULL);
 					}
@@ -1940,6 +1947,8 @@ static void trigger_mbb_reauth(private_task_manager_t *this)
 				break;
 		}
 		cfg = child_sa->get_config(child_sa);
+		DBG0(DBG_IKE, "AA_SN %s %d resolve this cpu where is it called "
+				"reauth? ", __func__, __LINE__);
 		child_create = child_create_create(new, cfg->get_ref(cfg),
 										   FALSE, NULL, NULL);
 		child_create->use_reqid(child_create, child_sa->get_reqid(child_sa));
@@ -1982,8 +1991,9 @@ static void trigger_mbb_reauth(private_task_manager_t *this)
 
 	/* suspend online revocation checking until the SA is established */
 	new->set_condition(new, COND_ONLINE_VALIDATION_SUSPENDED, TRUE);
-
-	if (new->initiate(new, NULL, 0, NULL, NULL) != DESTROY_ME)
+	DBG0(DBG_IKE, "AA_SN %s %d resolve this initiate where is it called ",
+					__func__, __LINE__);
+	if (new->initiate(new, NULL, 0, CPU_MAX, NULL, NULL) != DESTROY_ME)
 	{
 		new->queue_task(new, (task_t*)ike_verify_peer_cert_create(new));
 		new->queue_task(new, (task_t*)ike_reauth_complete_create(new,
@@ -2103,11 +2113,22 @@ METHOD(task_manager_t, queue_dpd, void,
 
 METHOD(task_manager_t, queue_child, void,
 	private_task_manager_t *this, child_cfg_t *cfg, uint32_t reqid,
-	traffic_selector_t *tsi, traffic_selector_t *tsr)
+	uint32_t cpu, traffic_selector_t *tsi, traffic_selector_t *tsr)
 {
 	child_create_t *task;
 
+	// trap initiate comes here
 	task = child_create_create(this->ike_sa, cfg, FALSE, tsi, tsr);
+	if (cpu < CPU_MAX)
+	{
+		if (cpu < CPU_MAX && !this->ike_sa->get_child_count(this->ike_sa))
+		{
+			DBG1(DBG_IKE, "AA_SN %s %d new IKE SA reset CPU %d to %d", __func__, __LINE__, cpu);
+			cpu = CPU_MAX;
+
+		}
+		task->set_cpus(task, cpu, CPU_MAX);
+	}
 	if (reqid)
 	{
 		task->use_reqid(task, reqid);

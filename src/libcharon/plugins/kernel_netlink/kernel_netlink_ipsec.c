@@ -5,6 +5,7 @@
  * Copyright (C) 2006-2007 Fabian Hartmann, Noah Heusser
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005 Jan Hutter
+ * Copyright (C) 2021 secunet Security Networks AG
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -167,7 +168,7 @@ ENUM(xfrm_msg_names, XFRM_MSG_NEWSA, XFRM_MSG_MAPPING,
 	"XFRM_MSG_MAPPING"
 );
 
-ENUM(xfrm_attr_type_names, XFRMA_UNSPEC, XFRMA_OFFLOAD_DEV,
+ENUM(xfrm_attr_type_names, XFRMA_UNSPEC, XFRMA_SA_PCPU,
 	"XFRMA_UNSPEC",
 	"XFRMA_ALG_AUTH",
 	"XFRMA_ALG_CRYPT",
@@ -197,6 +198,10 @@ ENUM(xfrm_attr_type_names, XFRMA_UNSPEC, XFRMA_OFFLOAD_DEV,
 	"XFRMA_ADDRESS_FILTER",
 	"XFRMA_PAD",
 	"XFRMA_OFFLOAD_DEV",
+	"XFRMA_SET_MARK",
+	"XFRMA_SET_MARK_MASK",
+	"XFRMA_IF_ID",
+	"XFRMA_SA_PCPU",
 );
 
 /**
@@ -586,6 +591,11 @@ struct policy_entry_t {
 	/** reqid for this policy */
 	uint32_t reqid;
 
+	// AA_SN shuld I added to equals/hashtable functions
+	// If it is added when adding sa/deleting SA equals may break
+	/** enable pcpu for this policy */
+	bool enable_pcpus;
+
 	/** Number of threads waiting to work on this policy */
 	int waiting;
 
@@ -899,6 +909,7 @@ static void process_acquire(private_kernel_netlink_ipsec_t *this,
 	size_t rtasize;
 	traffic_selector_t *src_ts, *dst_ts;
 	uint32_t reqid = 0;
+	uint32_t cpu = CPU_MAX;
 	int proto = 0;
 
 	acquire = NLMSG_DATA(hdr);
@@ -918,6 +929,12 @@ static void process_acquire(private_kernel_netlink_ipsec_t *this,
 			reqid = tmpl->reqid;
 			proto = tmpl->id.proto;
 		}
+		if (rta->rta_type == XFRMA_SA_PCPU)
+		{
+			cpu = *(uint32_t *)RTA_DATA(rta);
+			DBG2(DBG_KNL, "AA_SN %s %d received a XFRMA_SA_PCPU %u",
+					__func__, __LINE__, cpu);
+		}
 		rta = RTA_NEXT(rta, rtasize);
 	}
 	switch (proto)
@@ -933,7 +950,7 @@ static void process_acquire(private_kernel_netlink_ipsec_t *this,
 	src_ts = selector2ts(&acquire->sel, TRUE);
 	dst_ts = selector2ts(&acquire->sel, FALSE);
 
-	charon->kernel->acquire(charon->kernel, reqid, src_ts, dst_ts);
+	charon->kernel->acquire(charon->kernel, reqid, cpu, src_ts, dst_ts);
 }
 
 /**
@@ -1875,6 +1892,22 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		goto failed;
 	}
 
+	if (id->cpu < CPU_MAX && !add_uint32(hdr, sizeof(request),
+												XFRMA_SA_PCPU, id->cpu))
+	{
+			goto failed;
+	}
+	if (id->cpu < CPU_MAX)
+	{
+		DBG0(DBG_KNL, "AA_SN %s %d set XFRMA_SA_PCPU %d", __func__, __LINE__,
+				id->cpu);
+	}
+	else
+	{
+		DBG0(DBG_KNL, "AA_SN %s %d NOT SETTING XFRMA_SA_PCPU %d", __func__, __LINE__,
+				id->cpu);
+	}
+
 	if (ipcomp == IPCOMP_NONE && (data->mark.value | data->mark.mask))
 	{
 		if (!add_uint32(hdr, sizeof(request), XFRMA_SET_MARK,
@@ -2701,6 +2734,16 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 	policy_info->sel = policy->sel;
 	policy_info->dir = policy->direction;
 
+	if (policy->enable_pcpus)
+	{
+		DBG2(DBG_KNL, "AA_SN %s %d XFRM_POLICY_CPU_ACQUIRE", __func__, __LINE__);
+		policy_info->flags |= XFRM_POLICY_CPU_ACQUIRE;
+	}
+	else if(policy->direction == XFRM_POLICY_OUT)
+	{
+		DBG2(DBG_KNL, "AA_SN %s %d XFRM_POLICY_OUT without XFRM_POLICY_CPU_ACQUIRE", __func__, __LINE__);
+	}
+
 	/* calculate priority based on selector size, small size = high prio */
 	policy_info->priority = mapping->priority;
 	policy_info->action = mapping->type != POLICY_DROP ? XFRM_POLICY_ALLOW
@@ -2756,7 +2799,12 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 			}
 			tmpl->reqid = ipsec->cfg.reqid;
 			tmpl->id.proto = protos[i].proto;
-			if (policy->direction == POLICY_OUT)
+			/*
+			 * pCPU OUT policy can't support SPI in tmplate
+			 * Also force to delay install_outbound, register_outbound,
+			 * on rekey responder
+			 */
+			if (policy->direction == POLICY_OUT && !policy->enable_pcpus)
 			{
 				tmpl->id.spi = protos[i].spi;
 			}
@@ -2846,6 +2894,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 		.if_id = id->if_id,
 		.direction = id->dir,
 		.reqid = data->sa->reqid,
+		.enable_pcpus = id->enable_pcpus,
 	);
 	format_mark(markstr, sizeof(markstr), id->mark);
 
@@ -2865,6 +2914,8 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 			this->mutex->unlock(this->mutex);
 			return INVALID_STATE;
 		}
+		/* override what is in the kernel with current enable_pcpus */
+		current->enable_pcpus = id->enable_pcpus;
 		/* use existing policy */
 		DBG2(DBG_KNL, "policy %R === %R %N%s already exists, increasing "
 			 "refcount", id->src_ts, id->dst_ts, policy_dir_names, id->dir,
@@ -3137,6 +3188,17 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 		}
 		current->used_by->get_first(current->used_by, (void**)&mapping);
 		current->reqid = mapping->sa->cfg.reqid;
+
+		if (use_count == 1)
+		{
+			DBG0(DBG_IKE, "AA_SN %s %d resolve: a better check : is this route policy", __func__, __LINE__);
+			/*
+			 * disable PCPUS flag when all established SAs are removed
+			 * Now only route policy remains
+			 * AA_SN is there better way to check this than use_count ??
+			 */
+			 current->enable_pcpus = id->enable_pcpus;
+		}
 
 		DBG2(DBG_KNL, "updating policy %R === %R %N%s [priority %u, "
 			 "refcount %d]", id->src_ts, id->dst_ts, policy_dir_names, id->dir,

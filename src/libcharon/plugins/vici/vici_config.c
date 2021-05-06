@@ -514,6 +514,7 @@ typedef struct {
 	linked_list_t *remote_ts;
 	uint32_t replay_window;
 	child_cfg_create_t cfg;
+	uint32_t pcpus;
 } child_data_t;
 
 /**
@@ -572,6 +573,7 @@ static void log_child_data(child_data_t *data, char *name)
 	DBG2(DBG_CFG, "   copy_df = %u", !has_opt(OPT_NO_COPY_DF));
 	DBG2(DBG_CFG, "   copy_ecn = %u", !has_opt(OPT_NO_COPY_ECN));
 	DBG2(DBG_CFG, "   copy_dscp = %N", dscp_copy_names, cfg->copy_dscp);
+	DBG2(DBG_CFG, "   pcpus = %u", cfg->pcpus);
 }
 
 /**
@@ -1760,6 +1762,7 @@ CALLBACK(child_kv, bool,
 		{ "copy_dscp",			parse_copy_dscp,	&child->cfg.copy_dscp				},
 		{ "if_id_in",			parse_if_id,		&child->cfg.if_id_in				},
 		{ "if_id_out",			parse_if_id,		&child->cfg.if_id_out				},
+		{ "pcpus",				parse_uint32,		&child->cfg.pcpus					},
 	};
 
 	return parse_rules(rules, countof(rules), name, value,

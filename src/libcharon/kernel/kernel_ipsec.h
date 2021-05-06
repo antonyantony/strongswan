@@ -57,6 +57,8 @@ struct kernel_ipsec_sa_id_t {
 	mark_t mark;
 	/** Optional interface ID */
 	uint32_t if_id;
+	/** Optional CPU */
+	uint32_t cpu;
 };
 
 /**
@@ -158,6 +160,8 @@ struct kernel_ipsec_policy_id_t {
 	mark_t mark;
 	/** Optional interface ID */
 	uint32_t if_id;
+	/** Optional PCPUs support */
+	bool enable_pcpus;
 	/** Network interface restricting policy */
 	char *interface;
 };

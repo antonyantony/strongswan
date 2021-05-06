@@ -788,6 +788,7 @@ struct ike_sa_t {
 	 *
 	 * @param child_cfg		child config to create CHILD from
 	 * @param reqid			reqid to use for CHILD_SA, 0 assign uniquely
+	 * @param cpu		CPU
 	 * @param tsi			source of triggering packet
 	 * @param tsr			destination of triggering packet.
 	 * @return
@@ -795,7 +796,8 @@ struct ike_sa_t {
 	 *						- DESTROY_ME if initialization failed
 	 */
 	status_t (*initiate) (ike_sa_t *this, child_cfg_t *child_cfg,
-						  uint32_t reqid, traffic_selector_t *tsi,
+						  uint32_t reqid, uint32_t cpu,
+						  traffic_selector_t *tsi,
 						  traffic_selector_t *tsr);
 
 	/**
@@ -1001,6 +1003,7 @@ struct ike_sa_t {
 	 *
 	 * @param protocol		protocol of the SA
 	 * @param spi			inbound SPI of the CHILD_SA
+	 * @param cpu		my CPU
 	 * @return
 	 *						- NOT_FOUND, if IKE_SA has no such CHILD_SA
 	 *						- SUCCESS, if rekeying initiated
@@ -1102,6 +1105,23 @@ struct ike_sa_t {
 	 * @return				interface ID
 	 */
 	uint32_t (*get_if_id)(ike_sa_t *this, bool inbound);
+
+	/**
+	 * Get PCPUS negotiated by a Child head SA
+	 *
+	 * @param config		child config
+	 * @param inbound		TRUE for inbound CPU
+	 * @return				negotiated pcpus
+	 */
+	uint32_t (*get_pcpus)(ike_sa_t *this, child_cfg_t *child, bool inbound);
+
+	/**
+	 * More PCPU children allowed
+	 *
+	 * @param config		child config
+	 * @return				FALSE when more PCPU SAs are allowed
+	 */
+	bool (*max_pcpu_children)(ike_sa_t *this, child_cfg_t *child);
 
 	/**
 	 * Create an enumerator over virtual IPs.

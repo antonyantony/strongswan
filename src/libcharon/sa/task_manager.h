@@ -173,10 +173,12 @@ struct task_manager_t {
 	 *
 	 * @param cfg			CHILD_SA config to establish
 	 * @param reqid			reqid to use for CHILD_SA
+	 * @param cpu		CPU
 	 * @param tsi			initiator traffic selector, if packet-triggered
 	 * @param tsr			responder traffic selector, if packet-triggered
 	 */
 	void (*queue_child)(task_manager_t *this, child_cfg_t *cfg, uint32_t reqid,
+						uint32_t cpu,
 						traffic_selector_t *tsi, traffic_selector_t *tsr);
 
 	/**

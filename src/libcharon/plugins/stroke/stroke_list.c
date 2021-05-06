@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 Martin Willi
+ * Copyright (C) 2021 secunet Security Networks AG
  * HSR Hochschule fuer Technik Rapperswil
  *
  * Copyright (C) 2015 Andreas Steffen
@@ -228,6 +229,20 @@ static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 				child_sa->has_encap(child_sa) ? " in UDP" : "",
 				ntohl(child_sa->get_spi(child_sa, TRUE)),
 				ntohl(child_sa->get_spi(child_sa, FALSE)));
+		if (child_sa->get_cpu(child_sa, FALSE) < CPU_MAX ||
+				child_sa->get_cpu(child_sa, TRUE) < CPU_MAX)
+		{
+			fprintf(out, ", cpu id %d_i %d_o",
+					child_sa->get_cpu(child_sa, TRUE),
+					child_sa->get_cpu(child_sa, FALSE));
+		}
+		else if (child_sa->get_pcpus(child_sa, FALSE) < CPU_MAX ||
+				child_sa->get_pcpus(child_sa, TRUE) < CPU_MAX)
+		{
+			fprintf(out, ", pcpus %d_i %d_o",
+					child_sa->get_pcpus(child_sa, TRUE),
+					child_sa->get_pcpus(child_sa, FALSE));
+		}
 
 		if (child_sa->get_ipcomp(child_sa) != IPCOMP_NONE)
 		{

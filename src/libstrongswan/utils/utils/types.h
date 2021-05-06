@@ -71,4 +71,7 @@ typedef const char *err_t;
  */
 typedef struct sockaddr sockaddr_t;
 
+/* what is better place to define this ?? */
+# define CPU_MAX UINT32_MAX
+
 #endif /** TYPES_H_ @} */

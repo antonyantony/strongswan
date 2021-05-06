@@ -68,7 +68,7 @@ struct trap_manager_t {
 	 * @param src		source of the triggering packet
 	 * @param dst		destination of the triggering packet
 	 */
-	void (*acquire)(trap_manager_t *this, uint32_t reqid,
+	void (*acquire)(trap_manager_t *this, uint32_t reqid, uint32_t cpu,
 					traffic_selector_t *src, traffic_selector_t *dst);
 
 	/**

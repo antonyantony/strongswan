@@ -1685,7 +1685,7 @@ METHOD(task_manager_t, queue_ike_reauth, void,
 		enumerator->destroy(enumerator);
 	}
 
-	if (new->initiate(new, NULL, 0, NULL, NULL) != DESTROY_ME)
+	if (new->initiate(new, NULL, 0, CPU_MAX, NULL, NULL) != DESTROY_ME)
 	{
 		charon->ike_sa_manager->checkin(charon->ike_sa_manager, new);
 		this->ike_sa->set_state(this->ike_sa, IKE_REKEYING);
@@ -1733,10 +1733,11 @@ METHOD(task_manager_t, queue_mobike, void,
 
 METHOD(task_manager_t, queue_child, void,
 	private_task_manager_t *this, child_cfg_t *cfg, uint32_t reqid,
-	traffic_selector_t *tsi, traffic_selector_t *tsr)
+	uint32_t cpu, traffic_selector_t *tsi, traffic_selector_t *tsr)
 {
 	quick_mode_t *task;
 
+	(void)cpu; /* UNUSED */
 	task = quick_mode_create(this->ike_sa, cfg, tsi, tsr);
 	task->use_reqid(task, reqid);
 

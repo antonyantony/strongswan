@@ -253,7 +253,10 @@ METHOD(job_t, execute, job_requeue_t,
 					task->migrate(task, ike_sa);
 					ike_sa->queue_task(ike_sa, task);
 				}
-				if (ike_sa->initiate(ike_sa, NULL, 0, NULL, NULL) == DESTROY_ME)
+				DBG0(DBG_IKE,  "AA_SN %s %d resolve this initiate where is it "
+						"called ", __func__, __LINE__);
+				if (ike_sa->initiate(ike_sa, NULL, 0, CPU_MAX,
+										NULL, NULL) == DESTROY_ME)
 				{
 					charon->ike_sa_manager->checkin_and_destroy(
 											charon->ike_sa_manager, ike_sa);

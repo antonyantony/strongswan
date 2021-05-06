@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011-2017 Tobias Brunner
  * Copyright (C) 2009 Martin Willi
+ * Copyright (C) 2021 secunet Security Networks AG
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -299,6 +300,8 @@ METHOD(trap_manager_t, install, bool,
 		 * pass them in a later initiate() call */
 		.if_id_in_def = peer->get_if_id(peer, TRUE),
 		.if_id_out_def = peer->get_if_id(peer, FALSE),
+		.other_pcpus = 0,
+		.my_pcpus = 0,
 	};
 	child_sa = child_sa_create(me, other, child, &child_data);
 
@@ -423,7 +426,7 @@ METHOD(trap_manager_t, create_enumerator, enumerator_t*,
 }
 
 METHOD(trap_manager_t, acquire, void,
-	private_trap_manager_t *this, uint32_t reqid,
+	private_trap_manager_t *this, uint32_t reqid, uint32_t cpu,
 	traffic_selector_t *src, traffic_selector_t *dst)
 {
 	enumerator_t *enumerator;
@@ -488,6 +491,8 @@ METHOD(trap_manager_t, acquire, void,
 		}
 		else
 		{
+			// NOTE AA_SN first acquire comes here
+			// second acquire also ??
 			INIT(acquire,
 				.reqid = reqid,
 			);
@@ -535,6 +540,8 @@ METHOD(trap_manager_t, acquire, void,
 	}
 	else
 	{
+		// NOTE AA_SN first acquire comes here
+		// second acquire tooL:544
 		ike_sa = charon->ike_sa_manager->checkout_by_config(
 											charon->ike_sa_manager, peer);
 	}
@@ -542,6 +549,13 @@ METHOD(trap_manager_t, acquire, void,
 
 	if (ike_sa)
 	{
+		if (ike_sa->get_peer_cfg(ike_sa) == NULL)
+		{
+			DBG0(DBG_CFG, "AA_SN %s %d initiate IKE cpu %d %s",
+				__func__, __LINE__, cpu, cpu < CPU_MAX ? " force to -1" : "");
+			cpu = CPU_MAX;
+			ike_sa->set_peer_cfg(ike_sa, peer);
+		}
 		if (this->ignore_acquire_ts || ike_sa->get_version(ike_sa) == IKEV1)
 		{	/* in IKEv1, don't prepend the acquiring packet TS, as we only
 			 * have a single TS that we can establish in a Quick Mode. */
@@ -552,8 +566,15 @@ METHOD(trap_manager_t, acquire, void,
 		acquire->ike_sa = ike_sa;
 		this->mutex->unlock(this->mutex);
 
-		if (ike_sa->initiate(ike_sa, child, reqid, src, dst) != DESTROY_ME)
+		// NOTE AA_SN first acquire comes here
+		// second acquire also comes here
+		DBG0(DBG_CFG, "AA_SN %s %d initiate child cpu %d",
+				__func__, __LINE__, cpu);
+		if (ike_sa->initiate(ike_sa, child, reqid, cpu,
+					src, dst) != DESTROY_ME)
 		{
+			// NOTE AA_SN first acquire comes here
+			// second acquire also comes here
 			charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 		}
 		else

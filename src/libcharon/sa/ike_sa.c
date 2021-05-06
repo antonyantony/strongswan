@@ -3,6 +3,7 @@
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
+ * Copyright (C) 2021 secunet Security Networks AG
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -1511,7 +1512,7 @@ static void resolve_hosts(private_ike_sa_t *this)
 
 METHOD(ike_sa_t, initiate, status_t,
 	private_ike_sa_t *this, child_cfg_t *child_cfg, uint32_t reqid,
-	traffic_selector_t *tsi, traffic_selector_t *tsr)
+	uint32_t cpu, traffic_selector_t *tsi, traffic_selector_t *tsr)
 {
 	bool defer_initiate = FALSE;
 
@@ -1567,7 +1568,7 @@ METHOD(ike_sa_t, initiate, status_t,
 	{
 		/* normal IKE_SA with CHILD_SA */
 		this->task_manager->queue_child(this->task_manager, child_cfg, reqid,
-										tsi, tsr);
+										cpu, tsi, tsr);
 #ifdef ME
 		if (this->peer_cfg->get_mediated_by(this->peer_cfg))
 		{
@@ -1600,7 +1601,10 @@ METHOD(ike_sa_t, retry_initiate, status_t,
 	if (this->retry_initiate_queued)
 	{
 		this->retry_initiate_queued = FALSE;
-		return initiate(this, NULL, 0, NULL, NULL);
+		DBG0(DBG_IKE, "AA_SN %s %d resolve this initiate where is it called ",
+				__func__, __LINE__);
+		return initiate(this, NULL, 0, CPU_MAX /* AA_SN check this */,
+				NULL, NULL);
 	}
 	return SUCCESS;
 }
@@ -1715,6 +1719,77 @@ METHOD(ike_sa_t, get_if_id, uint32_t,
 	private_ike_sa_t *this, bool inbound)
 {
 	return inbound ? this->if_id_in : this->if_id_out;
+}
+
+METHOD(ike_sa_t, max_pcpu_children, bool,
+	private_ike_sa_t *this, child_cfg_t *child_cfg)
+{
+	enumerator_t *enumerator;
+	child_sa_t *child_sa;
+	uint32_t nchildren = 0, my_pcpus = 0, other_pcpus = 0;
+
+	enumerator = array_create_enumerator(this->child_sas);
+	while (enumerator->enumerate(enumerator, (void**)&child_sa))
+	{
+		child_cfg_t *config;
+
+		config = child_sa->get_config(child_sa);
+		if (child_sa->get_state(child_sa) == CHILD_INSTALLED &&
+			config->equals(config, child_cfg))
+		{
+			if (child_sa->get_cpu(child_sa, FALSE) < CPU_MAX)
+			{
+				nchildren++;
+			}
+			else if (!my_pcpus)
+			{
+				// Thomas suggest to store latest value in ikea_sa.
+				my_pcpus = child_sa->get_pcpus(child_sa, FALSE);
+				other_pcpus = child_sa->get_pcpus(child_sa, TRUE);
+			}
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (nchildren > min(my_pcpus, other_pcpus))
+	{
+		DBG1(DBG_IKE, "too many PCPU SAs %u > min(%u, %u)",
+				nchildren, my_pcpus, other_pcpus);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+METHOD(ike_sa_t, get_pcpus, uint32_t,
+	private_ike_sa_t *this, child_cfg_t *child_cfg, bool inbound)
+{
+	enumerator_t *enumerator;
+	child_sa_t *child_sa;
+	uint32_t pcpus = 0;
+
+	enumerator = array_create_enumerator(this->child_sas);
+	while (enumerator->enumerate(enumerator, (void**)&child_sa))
+	{
+		child_cfg_t *config;
+
+		config = child_sa->get_config(child_sa);
+		if (child_sa->get_state(child_sa) == CHILD_INSTALLED &&
+			config->equals(config, child_cfg))
+		{
+			pcpus = child_sa->get_pcpus(child_sa, inbound);
+			/*
+			 * Corner case:
+			 * The rekeyed child SA could be the first to hit.
+			 * If there are multiple head SAs for a child config,
+			 * and with different values of PCPUs negotiated,
+			 * the result could unpredictable after a head sa rekey.
+			 */
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	return pcpus;
 }
 
 METHOD(ike_sa_t, add_child_sa, void,
@@ -2060,8 +2135,10 @@ static status_t reestablish_children(private_ike_sa_t *this, ike_sa_t *new,
 				DBG1(DBG_IKE, "restarting CHILD_SA %s",
 					 child_cfg->get_name(child_cfg));
 				child_cfg->get_ref(child_cfg);
+				DBG0(DBG_IKE, "AA_SN %s %d resolve this initiate where is it "
+						"called ", __func__, __LINE__);
 				status = new->initiate(new, child_cfg,
-								child_sa->get_reqid(child_sa), NULL, NULL);
+								child_sa->get_reqid(child_sa), 0, NULL, NULL);
 				break;
 			default:
 				continue;
@@ -2078,7 +2155,9 @@ static status_t reestablish_children(private_ike_sa_t *this, ike_sa_t *new,
 		new->adopt_child_tasks(new, &this->public);
 		if (new->get_state(new) == IKE_CREATED)
 		{
-			status = new->initiate(new, NULL, 0, NULL, NULL);
+			DBG0(DBG_IKE, "AA_SN %s %d resolve this initiate where is it "
+					"called", __func__, __LINE__);
+			status = new->initiate(new, NULL, 0, 0, NULL, NULL);
 		}
 	}
 	return status;
@@ -2911,6 +2990,8 @@ METHOD(ike_sa_t, inherit_post, void,
 	this->if_id_in = other->if_id_in;
 	this->if_id_out = other->if_id_out;
 
+	DBG0(DBG_IKE, "AA_SN %s %d resolve add inhering code", __FUNCTION__, __LINE__);
+
 	/* apply assigned virtual IPs... */
 	while (array_remove(other->my_vips, ARRAY_HEAD, &vip))
 	{
@@ -3188,6 +3269,8 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 			.add_configuration_attribute = _add_configuration_attribute,
 			.create_attribute_enumerator = _create_attribute_enumerator,
 			.get_if_id = _get_if_id,
+			.get_pcpus = _get_pcpus,
+			.max_pcpu_children = _max_pcpu_children,
 			.set_kmaddress = _set_kmaddress,
 			.create_task_enumerator = _create_task_enumerator,
 			.remove_task = _remove_task,

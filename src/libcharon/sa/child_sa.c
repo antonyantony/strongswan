@@ -4,6 +4,7 @@
  * Copyright (C) 2005-2008 Martin Willi
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005 Jan Hutter
+ * Copyright (C) 2021 secunet Security Networks AG
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -167,6 +168,26 @@ struct private_child_sa_t {
 	 * Outbound interface ID
 	 */
 	uint32_t if_id_out;
+
+	/**
+	 * Outbound CPU add to outbound SA
+	 */
+	uint32_t my_cpu;
+
+	/**
+	 * Inbound CPU expected, decided by RSS and not set in SA
+	 */
+	uint32_t other_cpu;
+
+	/**
+	 * outbound PCPUs
+	 */
+	uint32_t my_pcpus;
+
+	/**
+	 * inbound PCPUs received from the peer
+	 */
+	uint32_t other_pcpus;
 
 	/**
 	 * inbound mark used for this child_sa
@@ -555,6 +576,7 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 				.proto = proto_ike2ip(this->protocol),
 				.mark = mark_in_sa(this),
 				.if_id = this->if_id_in,
+				.cpu = CPU_MAX,
 			};
 			kernel_ipsec_query_sa_t query = {};
 
@@ -589,6 +611,8 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 				.proto = proto_ike2ip(this->protocol),
 				.mark = this->mark_out,
 				.if_id = this->if_id_out,
+				// AA_SN use convention other for out going??
+				.cpu = this->other_pcpus ? this->my_cpu : CPU_MAX,
 			};
 			kernel_ipsec_query_sa_t query = {};
 
@@ -729,6 +753,37 @@ METHOD(child_sa_t, get_mark, mark_t,
 	return inbound ? this->mark_in : this->mark_out;
 }
 
+METHOD(child_sa_t, get_cpu, uint32_t,
+	private_child_sa_t *this, bool inbound)
+{
+	return inbound ? this->other_cpu : this->my_cpu;
+}
+
+METHOD(child_sa_t, set_cpu, void,
+	private_child_sa_t *this, uint32_t cpu, bool inbound)
+{
+	if (inbound)
+	{
+		this->other_cpu = cpu;
+	}
+	else
+	{
+		this->my_cpu = cpu;
+	}
+}
+
+METHOD(child_sa_t, get_pcpus, uint32_t,
+	private_child_sa_t *this, bool inbound)
+{
+	return inbound ? this->other_pcpus : this->my_pcpus;
+}
+
+METHOD(child_sa_t, set_pcpus, void,
+	private_child_sa_t *this, uint32_t pcpus)
+{
+	this->other_pcpus = pcpus;
+}
+
 METHOD(child_sa_t, get_if_id, uint32_t,
 	private_child_sa_t *this, bool inbound)
 {
@@ -786,7 +841,7 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 	kernel_ipsec_sa_id_t id;
 	kernel_ipsec_add_sa_t sa;
 	lifetime_cfg_t *lifetime;
-	uint32_t tfc = 0;
+	uint32_t cpu, tfc = 0;
 	host_t *src, *dst;
 	status_t status;
 	bool update = FALSE;
@@ -796,6 +851,7 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 									array_create_enumerator(this->my_ts));
 	other_ts = linked_list_create_from_enumerator(
 									array_create_enumerator(this->other_ts));
+	cpu = CPU_MAX;
 
 	/* now we have to decide which spi to use. Use self allocated, if "in",
 	 * or the one in the proposal, if not "in" (others). Additionally,
@@ -822,6 +878,14 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 		this->other_cpi = cpi;
 		src_ts = my_ts;
 		dst_ts = other_ts;
+		if (this->other_pcpus)
+		{
+			cpu = initiator ? this->my_cpu : this->other_cpu;
+			if (cpu == CPU_MAX)
+			{
+				DBG0(DBG_IKE, "AA_SN %s %d cpu %x adding head SA ", __func__, __LINE__, ntohl(spi));
+			}
+		}
 
 		if (tfcv3)
 		{
@@ -896,6 +960,7 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 		.proto = proto_ike2ip(this->protocol),
 		.mark = inbound ? mark_in_sa(this) : this->mark_out,
 		.if_id = inbound ? this->if_id_in : this->if_id_out,
+		.cpu = cpu,
 	};
 	sa = (kernel_ipsec_add_sa_t){
 		.reqid = this->reqid,
@@ -977,12 +1042,15 @@ static void prepare_sa_cfg(private_child_sa_t *this, ipsec_sa_cfg_t *my_sa,
 	my_sa->ipcomp.cpi = this->my_cpi;
 	other_sa->ipcomp.cpi = this->other_cpi;
 
+	DBG0(DBG_IKE, "AA_SN %s %d resolve this where is it called ", __func__, __LINE__);
 	if (this->protocol == PROTO_ESP)
 	{
 		my_sa->esp.use = TRUE;
 		my_sa->esp.spi = this->my_spi;
+	//	my_sa->cpu = CPU_MAX;
 		other_sa->esp.use = TRUE;
 		other_sa->esp.spi = this->other_spi;
+	//	other_sa->cpu = this->pcpus ? this->my_cpu : CPU_MAX;
 	}
 	else
 	{
@@ -1052,6 +1120,7 @@ static status_t install_policies_outbound(private_child_sa_t *this,
 		.mark = this->mark_out,
 		.if_id = this->if_id_out,
 		.interface = this->config->get_interface(this->config),
+		.enable_pcpus = this->other_pcpus, /* only on outbound policy */
 	};
 	kernel_ipsec_manage_policy_t out_policy = {
 		.type = type,
@@ -1319,7 +1388,8 @@ METHOD(child_sa_t, register_outbound, status_t,
 
 	/* if the kernel supports installing SPIs with policies we install the
 	 * SA immediately as it will only be used once we update the policies */
-	if (charon->kernel->get_features(charon->kernel) & KERNEL_POLICY_SPI)
+	if (charon->kernel->get_features(charon->kernel) & KERNEL_POLICY_SPI &&
+			!this->other_pcpus)
 	{
 		status = install_internal(this, encr, integ, spi, cpi, FALSE, FALSE,
 								  tfcv3);
@@ -1433,6 +1503,7 @@ METHOD(child_sa_t, remove_outbound, void,
 		.proto = proto_ike2ip(this->protocol),
 		.mark = this->mark_out,
 		.if_id = this->if_id_out,
+		.cpu = this->other_pcpus ? this->my_cpu : CPU_MAX,
 	};
 	kernel_ipsec_del_sa_t sa = {
 		.cpi = this->other_cpi,
@@ -1509,6 +1580,7 @@ static status_t update_sas(private_child_sa_t *this, host_t *me, host_t *other,
 			.proto = proto_ike2ip(this->protocol),
 			.mark = this->mark_out,
 			.if_id = this->if_id_out,
+			.cpu = this->other_pcpus ? this->my_cpu : CPU_MAX,
 		};
 		kernel_ipsec_update_sa_t sa = {
 			.cpi = this->ipcomp != IPCOMP_NONE ? this->other_cpi : 0,
@@ -1717,6 +1789,7 @@ METHOD(child_sa_t, destroy, void,
 			.proto = proto_ike2ip(this->protocol),
 			.mark = mark_in_sa(this),
 			.if_id = this->if_id_in,
+			.cpu = CPU_MAX,
 		};
 		kernel_ipsec_del_sa_t sa = {
 			.cpi = this->my_cpi,
@@ -1732,6 +1805,7 @@ METHOD(child_sa_t, destroy, void,
 			.proto = proto_ike2ip(this->protocol),
 			.mark = this->mark_out,
 			.if_id = this->if_id_out,
+			.cpu = this->other_pcpus ? this->my_cpu : CPU_MAX,
 		};
 		kernel_ipsec_del_sa_t sa = {
 			.cpi = this->other_cpi,
@@ -1826,6 +1900,10 @@ child_sa_t *child_sa_create(host_t *me, host_t *other, child_cfg_t *config,
 			.get_usestats = _get_usestats,
 			.get_mark = _get_mark,
 			.get_if_id = _get_if_id,
+			.get_cpu = _get_cpu,
+			.set_cpu = _set_cpu,
+			.set_pcpus = _set_pcpus,
+			.get_pcpus = _get_pcpus,
 			.has_encap = _has_encap,
 			.get_ipcomp = _get_ipcomp,
 			.set_ipcomp = _set_ipcomp,
@@ -1863,6 +1941,10 @@ child_sa_t *child_sa_create(host_t *me, host_t *other, child_cfg_t *config,
 		.mark_out = config->get_mark(config, FALSE),
 		.if_id_in = config->get_if_id(config, TRUE) ?: data->if_id_in_def,
 		.if_id_out = config->get_if_id(config, FALSE) ?: data->if_id_out_def,
+		.my_cpu = data->my_cpu,
+		.other_cpu = data->other_cpu,
+		.my_pcpus = data->my_pcpus,
+		.other_pcpus = data->other_pcpus,
 		.install_time = time_monotonic(NULL),
 		.policies_fwd_out = config->has_option(config, OPT_FWD_OUT_POLICIES),
 	);

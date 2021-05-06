@@ -473,7 +473,10 @@ METHOD(job_t, initiate_execute, job_requeue_t,
 		}
 	}
 
-	if (ike_sa->initiate(ike_sa, listener->child_cfg, 0, NULL, NULL) == SUCCESS)
+	DBG0(DBG_IKE, "AA_SN %s %d resolve this initiate where is it called ",
+			__func__, __LINE__);
+	if (ike_sa->initiate(ike_sa, listener->child_cfg, 0, CPU_MAX,
+						 NULL, NULL) == SUCCESS)
 	{
 		if (!listener->logger.callback)
 		{

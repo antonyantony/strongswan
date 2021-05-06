@@ -55,7 +55,9 @@ METHOD(job_t, execute, job_requeue_t,
 											  this->ike_sa_id);
 	if (ike_sa)
 	{
-		if (ike_sa->initiate(ike_sa, NULL, 0, NULL, NULL) == DESTROY_ME)
+		DBG0(DBG_IKE,  "AA_SN %s %d resolve this initiate where is it called ",
+				__func__, __LINE__);
+		if (ike_sa->initiate(ike_sa, NULL, 0, 0, NULL, NULL) == DESTROY_ME)
 		{
 			charon->ike_sa_manager->checkin_and_destroy(charon->ike_sa_manager,
 														ike_sa);

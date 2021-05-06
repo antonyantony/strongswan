@@ -2,6 +2,7 @@
  * Copyright (C) 2008-2019 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Copyright (C) 2005 Jan Hutter
+ * Copyright (C) 2021 secunet Security Networks AG
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -102,6 +103,26 @@ struct private_child_create_t {
 	 * destination of triggering packet
 	 */
 	traffic_selector_t *packet_tsr;
+
+	/**
+	 * optional CPU
+	 */
+	uint32_t my_cpu;
+
+	/**
+	 * optional CPU
+	 */
+	uint32_t other_cpu;
+
+	/**
+	 * optional PCPUS support
+	 */
+	uint32_t my_pcpus;
+
+	/**
+	 * optional PCPUS support
+	 */
+	uint32_t other_pcpus;
 
 	/**
 	 * optional diffie hellman exchange
@@ -211,6 +232,10 @@ static void schedule_delayed_retry(private_child_create_t *this)
 	task->use_marks(task, this->child.mark_in, this->child.mark_out);
 	task->use_if_ids(task, this->child.if_id_in, this->child.if_id_out);
 
+	if (this->my_cpu < CPU_MAX)
+	{
+		task->set_cpus(task, this->my_cpu, this->other_cpu);
+	}
 	DBG1(DBG_IKE, "creating CHILD_SA failed, trying again in %d seconds",
 		 retry);
 	this->ike_sa->queue_task_delayed(this->ike_sa, (task_t*)task, retry);
@@ -560,6 +585,14 @@ static status_t select_and_install(private_child_create_t *this,
 	me = this->ike_sa->get_my_host(this->ike_sa);
 	other = this->ike_sa->get_other_host(this->ike_sa);
 
+	DBG0(DBG_IKE, "AA_SN %s %d child %ssupport PCPUS my %d other %d"
+			" my cpu %d other_cpu %d", __func__, __LINE__,
+			this->child_sa->get_pcpus(this->child_sa, TRUE) ? "" : "DO NOT ",
+			this->child_sa->get_pcpus(this->child_sa, FALSE),
+			this->child_sa->get_pcpus(this->child_sa, TRUE),
+			this->child_sa->get_cpu(this->child_sa, FALSE),
+			this->child_sa->get_cpu(this->child_sa, TRUE));
+
 	if (no_dh)
 	{
 		flags |= PROPOSAL_SKIP_DH;
@@ -775,8 +808,8 @@ static status_t select_and_install(private_child_create_t *this,
 		else
 		{
 			status_o = this->child_sa->install(this->child_sa, encr_r, integ_r,
-							this->other_spi, this->other_cpi, this->initiator,
-							FALSE, this->tfcv3);
+							this->other_spi, this->other_cpi,
+							this->initiator, FALSE, this->tfcv3);
 		}
 	}
 
@@ -847,6 +880,106 @@ static status_t select_and_install(private_child_create_t *this,
 	return SUCCESS;
 }
 
+static void add_pcpus_notify(uint32_t pcpus, message_t *message)
+{
+	chunk_t chunk;
+
+	DBG2(DBG_IKE, "send PCPUs support %u", pcpus);
+	pcpus = htonl(pcpus);
+	chunk = chunk_from_thing(pcpus);
+	message->add_notify(message, FALSE, PCPUS, chunk);
+}
+
+static void add_cpu_notify(uint32_t cpu, message_t *message)
+{
+	chunk_t chunk;
+
+	DBG2(DBG_IKE, "sending PCPUS cpu %u", cpu);
+	cpu = htonl(cpu);
+	chunk = chunk_from_thing(cpu);
+	message->add_notify(message, FALSE, CPU, chunk);
+}
+
+static uint32_t get_pcpus_notify(notify_payload_t *notify)
+{
+	chunk_t data;
+	uint32_t pcpus;
+
+	data = notify->get_notification_data(notify);
+	pcpus = ntohl(*(uint32_t*)data.ptr);
+	DBG1(DBG_IKE, "peer supports PCPUS %u", pcpus);
+
+	return pcpus;
+}
+
+static uint32_t get_cpu(notify_payload_t *notify)
+{
+	uint32_t cpu = CPU_MAX;
+	chunk_t data;
+
+	data = notify->get_notification_data(notify);
+	cpu = ntohl(*(uint32_t *)data.ptr);
+	DBG2(DBG_IKE, "received PCPUS CPU %d", cpu);
+	if (cpu == CPU_MAX)
+	{
+		DBG0(DBG_IKE, "received unexpected PCPUS CPU %d", cpu);
+	}
+
+	return cpu;
+}
+
+static status_t handle_pcpus(private_child_create_t *this)
+{
+	uint32_t pcpus;
+
+	pcpus = this->config->get_my_pcpus(this->config);
+	if (this->rekey)
+	{
+		this->child.my_pcpus = this->ike_sa->get_pcpus(this->ike_sa,
+				this->config, FALSE);
+		this->child.other_pcpus = this->ike_sa->get_pcpus(this->ike_sa,
+				this->config, TRUE);
+		this->child.my_cpu = this->my_cpu;
+		this->child.other_cpu = this->other_cpu;
+	}
+	else
+	{
+		if (this->other_cpu == CPU_MAX)
+		{	/* initiator proposed a normal SA or a head SA  */
+			if (this->other_pcpus)
+			{ /* initiator propsed a head SA) */
+				this->child.my_pcpus = pcpus;
+				this->child.other_pcpus = this->other_pcpus;
+			}
+		}
+		else
+		{ /* this is a sub SA */
+			if (this->other_pcpus)
+			{
+				DBG1(DBG_IKE, "peer send PCPUS %d and CPU %d notifications",
+						this->other_cpu, this->other_pcpus);
+				return INVALID_STATE;
+			}
+			this->child.my_pcpus = this->ike_sa->get_pcpus(this->ike_sa,
+													this->config, FALSE);
+			this->child.other_pcpus = this->ike_sa->get_pcpus(this->ike_sa,
+													this->config, TRUE);
+		}
+	}
+
+	/*
+	 * on responder for now set my_cpu to the other_cpu
+	 * Both cpus are equal. This is the simple case.
+	 * We could derive my_cpuid on responder differently from ther other_cpu
+	 * e.g when the responder has fewer cpus than the initiator.
+	 *
+	 * test/define what happens to kernel add_sa when the cpu > max cpus
+	 */
+	this->child.my_cpu = this->other_cpu;
+	this->child.other_cpu = this->other_cpu;
+	return SUCCESS;
+}
+
 /**
  * build the payloads for the message
  */
@@ -857,6 +990,7 @@ static bool build_payloads(private_child_create_t *this, message_t *message)
 	ke_payload_t *ke_payload;
 	ts_payload_t *ts_payload;
 	kernel_feature_t features;
+	uint32_t pcpus;
 
 	/* add SA payload */
 	if (this->initiator)
@@ -915,6 +1049,39 @@ static bool build_payloads(private_child_create_t *this, message_t *message)
 		message->add_notify(message, FALSE, ESP_TFC_PADDING_NOT_SUPPORTED,
 							chunk_empty);
 	}
+
+	pcpus = this->config->get_my_pcpus(this->config);
+	if (!this->rekey && pcpus)
+	{
+		if (this->initiator &&
+			this->child.my_cpu != CPU_MAX &&
+			!this->ike_sa->get_child_count(this->ike_sa))
+		{
+			// is the one queue_child() good enough or have both ??
+			DBG1(DBG_IKE, "AA_SN %s %d reset CPU %d and send PCPUS", __func__, __LINE__, this->child.my_cpu);
+			this->child.my_cpu = CPU_MAX;
+
+		}
+		if (this->child.my_cpu == CPU_MAX &&
+			(this->initiator || this->child.other_pcpus))
+		{
+			add_pcpus_notify(pcpus, message);
+		}
+	}
+	else
+	{
+		if (message->get_exchange_type(message) != CREATE_CHILD_SA)
+			DBG1(DBG_IKE, "AA_SN %s %d not sending PCPUS notify : rekey %s pcpus %u", __func__, __LINE__, this->rekey ? "yes" : "no", pcpus);
+	}
+
+	if (message->get_exchange_type(message) == CREATE_CHILD_SA &&
+		 !this->rekey && pcpus &&
+		 this->child.my_cpu < CPU_MAX &&
+		(this->initiator || this->child.other_cpu))
+	{
+		add_cpu_notify(this->child.my_cpu, message);
+	}
+
 	return TRUE;
 }
 
@@ -988,6 +1155,18 @@ static void handle_notify(private_child_create_t *this, notify_payload_t *notify
 			DBG1(DBG_IKE, "received %N, not using ESPv3 TFC padding",
 				 notify_type_names, notify->get_notify_type(notify));
 			this->tfcv3 = FALSE;
+			break;
+		case PCPUS:
+			if (!this->rekey)
+			{
+				this->other_pcpus = get_pcpus_notify(notify);
+			}
+			break;
+		case CPU:
+			if (!this->rekey)
+			{
+				this->other_cpu = get_cpu(notify);
+			}
 			break;
 		default:
 			break;
@@ -1177,6 +1356,20 @@ METHOD(task_t, build_i, status_t,
 	this->child.if_id_in_def = this->ike_sa->get_if_id(this->ike_sa, TRUE);
 	this->child.if_id_out_def = this->ike_sa->get_if_id(this->ike_sa, FALSE);
 	this->child.encap = this->ike_sa->has_condition(this->ike_sa, COND_NAT_ANY);
+	if (this->rekey)
+	{ /* initiating a sub SA or rekey get pcpu settings from a head sa*/
+		this->child.my_pcpus = this->ike_sa->get_pcpus(this->ike_sa,
+													this->config, FALSE);
+		this->child.other_pcpus = this->ike_sa->get_pcpus(this->ike_sa,
+													this->config, TRUE);
+		this->child.my_cpu = this->my_cpu;
+		this->child.other_cpu = this->other_cpu;
+	}
+	else {
+		this->child.my_pcpus = this->config->get_my_pcpus(this->config);
+		this->child.my_cpu = this->my_cpu;
+		this->child.other_cpu = this->other_cpu;
+	}
 	this->child_sa = child_sa_create(this->ike_sa->get_my_host(this->ike_sa),
 									 this->ike_sa->get_other_host(this->ike_sa),
 									 this->config, &this->child);
@@ -1508,6 +1701,24 @@ METHOD(task_t, build_r, status_t,
 	this->child.if_id_in_def = this->ike_sa->get_if_id(this->ike_sa, TRUE);
 	this->child.if_id_out_def = this->ike_sa->get_if_id(this->ike_sa, FALSE);
 	this->child.encap = this->ike_sa->has_condition(this->ike_sa, COND_NAT_ANY);
+
+	if (this->config->get_my_pcpus(this->config))
+	{
+		if (handle_pcpus(this) == INVALID_STATE)
+		{
+			message->add_notify(message, FALSE, INVALID_SYNTAX, chunk_empty);
+			return FAILED;
+		}
+		if (!this->rekey &&
+			this->ike_sa->max_pcpu_children(this->ike_sa, this->config))
+		{
+			//AA_SN what is better allert? define ALERT_PCPU
+			charon->bus->alert(charon->bus, ALERT_TS_MISMATCH, this->tsi, this->tsr);
+			message->add_notify(message, FALSE, TS_UNACCEPTABLE, chunk_empty);
+			handle_child_sa_failure(this, message);
+			return SUCCESS;
+		}
+	}
 	this->child_sa = child_sa_create(this->ike_sa->get_my_host(this->ike_sa),
 									 this->ike_sa->get_other_host(this->ike_sa),
 									 this->config, &this->child);
@@ -1762,6 +1973,20 @@ METHOD(task_t, process_i, status_t,
 		return delete_failed_sa(this);
 	}
 
+	// AA_SN rekey is already handled ??? double check this
+	if (!this->rekey && this->config->get_my_pcpus(this->config))
+	{
+		if (this->child_sa->get_cpu(this->child_sa, FALSE) == CPU_MAX)
+		{
+			this->child_sa->set_pcpus(this->child_sa, this->other_pcpus);
+		} else
+		{
+			this->child_sa->set_pcpus(this->child_sa,
+										this->ike_sa->get_pcpus(this->ike_sa,
+													this->config, TRUE));
+			this->child_sa->set_cpu(this->child_sa, this->other_cpu, TRUE);
+		}
+	}
 	if (select_and_install(this, no_dh, ike_auth) == SUCCESS)
 	{
 		if (!this->rekey)
@@ -1795,6 +2020,26 @@ METHOD(child_create_t, use_if_ids, void,
 {
 	this->child.if_id_in = in;
 	this->child.if_id_out = out;
+}
+
+METHOD(child_create_t, set_cpus, void,
+	private_child_create_t *this, uint32_t my_cpu, uint32_t other_cpu)
+{
+	this->my_cpu = my_cpu;
+	this->other_cpu = other_cpu;
+}
+
+METHOD(child_create_t, set_pcpus, void,
+	private_child_create_t *this, uint32_t pcpus, bool inbound)
+{
+	if (inbound)
+	{
+		this->other_pcpus = pcpus;
+	}
+	else
+	{
+		this->my_pcpus = pcpus;
+	}
 }
 
 METHOD(child_create_t, use_dh_group, void,
@@ -1926,6 +2171,8 @@ child_create_t *child_create_create(ike_sa_t *ike_sa,
 			.use_reqid = _use_reqid,
 			.use_marks = _use_marks,
 			.use_if_ids = _use_if_ids,
+			.set_cpus = _set_cpus,
+			.set_pcpus = _set_pcpus,
 			.use_dh_group = _use_dh_group,
 			.task = {
 				.get_type = _get_type,
@@ -1937,6 +2184,8 @@ child_create_t *child_create_create(ike_sa_t *ike_sa,
 		.config = config,
 		.packet_tsi = tsi ? tsi->clone(tsi) : NULL,
 		.packet_tsr = tsr ? tsr->clone(tsr) : NULL,
+		.my_cpu = CPU_MAX,
+		.other_cpu = CPU_MAX,
 		.dh_group = MODP_NONE,
 		.keymat = (keymat_v2_t*)ike_sa->get_keymat(ike_sa),
 		.mode = MODE_TUNNEL,

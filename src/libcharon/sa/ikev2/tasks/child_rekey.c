@@ -2,6 +2,7 @@
  * Copyright (C) 2009-2018 Tobias Brunner
  * Copyright (C) 2005-2007 Martin Willi
  * Copyright (C) 2005 Jan Hutter
+ * Copyright (C) 2021 secunet Security Networks AG
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -210,7 +211,14 @@ METHOD(task_t, build_i, status_t,
 	this->child_create->use_if_ids(this->child_create,
 						this->child_sa->get_if_id(this->child_sa, TRUE),
 						this->child_sa->get_if_id(this->child_sa, FALSE));
-
+	this->child_create->set_cpus(this->child_create,
+						this->child_sa->get_cpu(this->child_sa, FALSE),
+						this->child_sa->get_cpu(this->child_sa, TRUE));
+	this->child_create->set_pcpus(this->child_create,
+						this->child_sa->get_pcpus(this->child_sa, TRUE), TRUE);
+	this->child_create->set_pcpus(this->child_create,
+						this->child_sa->get_pcpus(this->child_sa, FALSE),
+													FALSE);
 	if (this->child_create->task.build(&this->child_create->task,
 									   message) != NEED_MORE)
 	{
@@ -274,6 +282,14 @@ METHOD(task_t, build_r, status_t,
 						this->child_sa->get_if_id(this->child_sa, FALSE));
 	config = this->child_sa->get_config(this->child_sa);
 	this->child_create->set_config(this->child_create, config->get_ref(config));
+	this->child_create->set_pcpus(this->child_create,
+						this->child_sa->get_pcpus(this->child_sa, TRUE), TRUE);
+	this->child_create->set_pcpus(this->child_create,
+						this->child_sa->get_pcpus(this->child_sa, FALSE),
+													FALSE);
+	this->child_create->set_cpus(this->child_create,
+						this->child_sa->get_cpu(this->child_sa, FALSE),
+						this->child_sa->get_cpu(this->child_sa, TRUE));
 	this->child_create->task.build(&this->child_create->task, message);
 
 	state = this->child_sa->get_state(this->child_sa);
@@ -391,7 +407,7 @@ METHOD(task_t, process_i, status_t,
 	if (message->get_notify(message, CHILD_SA_NOT_FOUND))
 	{
 		child_cfg_t *child_cfg;
-		uint32_t reqid;
+		uint32_t reqid, cpu;
 
 		if (this->collision &&
 			this->collision->get_type(this->collision) == TASK_CHILD_DELETE)
@@ -412,9 +428,10 @@ METHOD(task_t, process_i, status_t,
 		child_cfg->get_ref(child_cfg);
 		charon->bus->child_updown(charon->bus, this->child_sa, FALSE);
 		this->ike_sa->destroy_child_sa(this->ike_sa, protocol, spi);
+		cpu = this->child_sa->get_cpu(this->child_sa, FALSE);
 		return this->ike_sa->initiate(this->ike_sa,
 									  child_cfg->get_ref(child_cfg), reqid,
-									  NULL, NULL);
+									  cpu, NULL, NULL);
 	}
 
 	if (this->child_create->task.process(&this->child_create->task,

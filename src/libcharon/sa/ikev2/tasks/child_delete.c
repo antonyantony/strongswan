@@ -373,8 +373,10 @@ static status_t destroy_and_reestablish(private_child_delete_t *this)
 			{
 				case ACTION_RESTART:
 					child_cfg->get_ref(child_cfg);
+					DBG0(DBG_IKE, "AA_SN %s %d resolve this initiate where is it called ", __func__, __LINE__);
+					// add number from
 					status = this->ike_sa->initiate(this->ike_sa, child_cfg,
-													reqid, NULL, NULL);
+													reqid, CPU_MAX, NULL, NULL);
 					break;
 				case ACTION_ROUTE:
 					charon->traps->install(charon->traps,

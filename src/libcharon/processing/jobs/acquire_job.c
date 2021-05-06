@@ -35,6 +35,11 @@ struct private_acquire_job_t {
 	uint32_t reqid;
 
 	/**
+	 * acquired CPU when the policy per cpu acquire set.
+	 */
+	uint32_t cpu;
+
+	/**
 	 * acquired source traffic selector
 	 */
 	traffic_selector_t *src_ts;
@@ -56,7 +61,7 @@ METHOD(job_t, destroy, void,
 METHOD(job_t, execute, job_requeue_t,
 	private_acquire_job_t *this)
 {
-	charon->traps->acquire(charon->traps, this->reqid,
+	charon->traps->acquire(charon->traps, this->reqid, this->cpu,
 						   this->src_ts, this->dst_ts);
 	return JOB_REQUEUE_NONE;
 }
@@ -70,7 +75,7 @@ METHOD(job_t, get_priority, job_priority_t,
 /*
  * Described in header
  */
-acquire_job_t *acquire_job_create(uint32_t reqid,
+acquire_job_t *acquire_job_create(uint32_t reqid, uint32_t cpu,
 								  traffic_selector_t *src_ts,
 								  traffic_selector_t *dst_ts)
 {
@@ -85,6 +90,7 @@ acquire_job_t *acquire_job_create(uint32_t reqid,
 			},
 		},
 		.reqid = reqid,
+		.cpu = cpu,
 		.src_ts = src_ts,
 		.dst_ts = dst_ts,
 	);
