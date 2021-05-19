@@ -450,6 +450,7 @@ METHOD(task_t, process_i, status_t,
 		{
 			args.label = args.label->clone(args.label);
 		}
+		args.cpu = this->child_sa->get_cpu(this->child_sa);
 		charon->bus->child_updown(charon->bus, this->child_sa, FALSE);
 		this->ike_sa->destroy_child_sa(this->ike_sa, protocol, spi);
 		status = this->ike_sa->initiate(this->ike_sa,
