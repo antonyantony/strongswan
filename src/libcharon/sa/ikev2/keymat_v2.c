@@ -295,7 +295,7 @@ METHOD(keymat_v2_t, derive_ike_keys, bool,
 	pseudo_random_function_t rekey_function, chunk_t rekey_skd)
 {
 	chunk_t skeyseed = chunk_empty, secret, full_nonce, fixed_nonce;
-	chunk_t prf_plus_seed, spi_i, spi_r;
+	chunk_t add_secret = chunk_empty, prf_plus_seed, spi_i, spi_r;
 	chunk_t sk_ei = chunk_empty, sk_er = chunk_empty;
 	chunk_t sk_ai = chunk_empty, sk_ar = chunk_empty, sk_pi, sk_pr;
 	prf_plus_t *prf_plus = NULL;
