@@ -1,1 +1,7 @@
-./configure --build=x86_64-linux-gnu --prefix=/usr --includedir=\${prefix}/include --mandir=\${prefix}/share/man --infodir=\${prefix}/share/info --sysconfdir=/etc --localstatedir=/var --disable-silent-rules --libdir=\${prefix}/lib/x86_64-linux-gnu --libexecdir=\${prefix}/lib/x86_64-linux-gnu --disable-maintainer-mode --disable-dependency-tracking --libdir=/usr/lib --libexecdir=/usr/lib --enable-ldap --enable-curl --enable-pkcs11 --enable-mediation --enable-medsrv --enable-medcli --enable-openssl --enable-agent --enable-ctr --enable-ccm --enable-gcm --enable-addrblock --enable-eap-radius --enable-eap-identity --enable-eap-md5 --enable-eap-gtc --enable-eap-aka --enable-eap-mschapv2 --enable-eap-tls --enable-eap-ttls --enable-eap-tnc --enable-sql --enable-integrity-test --enable-ha --enable-led --enable-gcrypt --enable-test-vectors --enable-xauth-eap --enable-xauth-pam --enable-attr-sql --enable-cmd --disable-blowfish --disable-des --enable-rdrand
+./configure --build=x86_64-linux-gnu --prefix=/usr --includedir=\${prefix}/include \
+	--mandir=\${prefix}/share/man --infodir=\${prefix}/share/info --sysconfdir=/etc \
+	--localstatedir=/var --disable-silent-rules --libdir=\${prefix}/lib/x86_64-linux-gnu \
+	--libexecdir=\${prefix}/lib/x86_64-linux-gnu --disable-maintainer-mode \
+	--disable-dependency-tracking --libdir=/usr/lib --libexecdir=/usr/lib \
+	--sysconfdir=/etc/ --enable-openssl --disable-gmp --enable-cmd --disable-blowfish \
+	--disable-des --enable-rdrand
