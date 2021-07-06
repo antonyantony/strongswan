@@ -1,0 +1,139 @@
+#!/usr/bin/make -f
+export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1
+#export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1 -Wl,-z,defs
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib  --sysconfdir=/etc/ \
+		--enable-openssl --disable-gmp --enable-cmd \
+		--disable-blowfish --disable-des # BSD-Young license
+	#--with-user=strongswan --with-group=nogroup
+	#	--enable-kernel-pfkey --enable-kernel-klips \
+	# And for --enable-eap-sim we would need the library, which we don't
+	# have right now.
+	# Don't --enable-cisco-quirks, because some other IPsec implementations
+	# (most notably the Phion one) have problems connecting when pluto
+	# sends these Cisco options.
+
+# the padlock plugin only makes sense on i386
+# RdRand only makes sense on i386 and amd64
+DEB_BUILD_ARCH_CPU ?=$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
+ifeq ($(DEB_BUILD_ARCH_CPU),i386)
+  CONFIGUREARGS += --enable-padlock --enable-rdrand
+endif
+
+ifeq ($(DEB_BUILD_ARCH_CPU),amd64)
+  CONFIGUREARGS += --enable-rdrand
+endif
+
+ifeq ($(DEB_BUILD_ARCH_OS),linux)
+	# only enable network-manager and capabilities dropping on linux hosts
+	# some plugins are linux-only too
+	CONFIGUREARGS += --enable-nm \
+		--with-capabilities=libcap \
+		--enable-farp \
+		--enable-dhcp
+endif
+
+ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
+	# recommended configure line for FreeBSD
+	# http://wiki.strongswan.org/projects/strongswan/wiki/FreeBSD
+	CONFIGUREARGS += --disable-kernel-netlink \
+		--enable-kernel-pfkey --enable-kernel-pfroute \
+		--with-group=wheel
+endif
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(CONFIGUREARGS)
+
+override_dh_auto_clean:
+	dh_auto_clean
+	# after a make clean, no binaries _should_ be left, but ....
+	-find $(CURDIR) -name "*.o" | xargs --no-run-if-empty rm
+
+	# Really clean (#356716)
+	# This is a hack: should be better implemented
+	rm -f lib/libstrongswan/libstrongswan.a || true
+	rm -f lib/libstrongswan/liboswlog.a || true
+
+	# just in case something went wrong
+	rm -f $(CURDIR)/debian/ipsec.secrets
+
+	# and make sure that template are up-to-date
+	debconf-updatepo
+
+
+override_dh_install:
+
+	# first special cases AAA
+ifeq ($(DEB_BUILD_ARCH_OS),linux)
+	# handle Linux-only plugins
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-dhcp.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-farp.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-kernel-netlink.so
+endif
+
+ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
+	# handle FreeBSD-only plugins
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-kernel-pfkey.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-kernel-pfroute.so
+endif
+
+ifeq ($(DEB_BUILD_ARCH_CPU),i386)
+	# special handling for padlock, as it is only built on i386
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-padlock.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-rdrand.so
+endif
+	@echo "AA booo 11111"
+
+	# then install the rest, ignoring the above
+	@echo "AA first special cases"
+	# AAAA special cases
+	dh_install --fail-missing \
+		-X\.la -X\.a \
+		-Xman3
+
+	# add additional files not covered by upstream makefile...
+	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
+	# also "patch" ipsec.conf to include the debconf-managed file
+	echo >> $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
+	echo "include /var/lib/strongswan/ipsec.conf.inc" >> $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
+	# and to enable both IKEv1 and IKEv2 by default
+	sed -r 's/^[ \t]+# *charonstart=(yes|no) */\tcharonstart=yes/' < $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf > $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp
+	mv $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
+
+	# set permissions on ipsec.secrets
+	chmod 600 $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
+	chmod 700 -R $(CURDIR)/debian/strongswan-starter/etc/ipsec.d/private/
+	chmod 700 -R $(CURDIR)/debian/strongswan-starter/var/lib/strongswan/
+
+	# this is handled by update-rc.d
+	rm -rf $(CURDIR)/debian/strongswan-starter/etc/rc?.d
+
+	# delete var/lock/subsys and var/run to satisfy lintian
+	rm -rf $(CURDIR)/debian/openswan/var/lock
+	rm -rf $(CURDIR)/debian/openswan/var/run
+
+	# more lintian cleanups
+	find $(CURDIR)/debian/*strongswan*/ -name ".cvsignore" | xargs --no-run-if-empty rm -f
+	find $(CURDIR)/debian/*strongswan*/ -name "/.svn/" | xargs --no-run-if-empty rm -rf
+
+override_dh_installinit:
+	dh_installinit -n --name=ipsec
+
+override_dh_installchangelogs:
+	dh_installchangelogs NEWS
+
+override_dh_strip:
+	dh_strip --dbg-package=strongswan-dbg
+
+override_dh_fixperms:
+	dh_fixperms -X etc/ipsec.secrets -X etc/ipsec.d -X var/lib/strongswan
+
+override_dh_makeshlibs:
+	dh_makeshlibs -n -X usr/lib/ipsec/plugins
+
+override_dh_installlogcheck:
+	dh_installlogcheck --name strongswan
+
+%:
+	dh $@ --parallel --with autoreconf
