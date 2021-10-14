@@ -1,3 +1,13 @@
+strongswan (5.9.1-1+deb11u1) UNRELEASED; urgency=medium
+
+  * Reject RSASSA-PSS params with negative salt length
+    - fix remote denial of service (CVE-2021-41990)
+  * Prevent crash due to integer overflow / sign change
+    - fix remote denial of service (CVE-2021-41991)
+  * d/gpp.conf: track bullseye branches
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 14 Oct 2021 20:11:54 +0200
+
 strongswan (5.9.1-1) unstable; urgency=medium
 
   * New upstream version 5.9.1
