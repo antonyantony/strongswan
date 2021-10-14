@@ -1,4 +1,4 @@
-strongswan (5.7.2-1+deb10u1) UNRELEASED; urgency=medium
+strongswan (5.7.2-1+deb10u1) buster-security; urgency=medium
 
   * Reject RSASSA-PSS params with negative salt length
     - fix remote denial of service (CVE-2021-41990)
@@ -6,7 +6,7 @@ strongswan (5.7.2-1+deb10u1) UNRELEASED; urgency=medium
     - fix remote denial of service (CVE-2021-41991)
   * d/gbp.conf: track buster-security branches
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 14 Oct 2021 20:15:51 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 14 Oct 2021 20:17:07 +0200
 
 strongswan (5.7.2-1) unstable; urgency=medium
 
