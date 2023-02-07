@@ -3873,6 +3873,17 @@ METHOD(kernel_ipsec_t, enable_udp_decap, bool,
 		DBG1(DBG_KNL, "unable to set UDP_ENCAP: %s", strerror(errno));
 		return FALSE;
 	}
+
+	type = true;
+
+	if (setsockopt(fd, SOL_UDP, UDP_GRO, &type, sizeof(type)) < 0)
+	{
+		DBG1(DBG_KNL, "unable to set UDP_GRO: %s", strerror(errno));
+		return FALSE;
+	}
+	DBG1(DBG_KNL, "AA enabled UDP_GRO: ");
+
+
 	return TRUE;
 }
 
