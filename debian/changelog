@@ -1,8 +1,8 @@
-strongswan (5.9.8-5) UNRELEASED; urgency=medium
+strongswan (5.9.8-5) unstable; urgency=medium
 
   * No-change upload for source-only upload.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Fri, 03 Mar 2023 18:56:31 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 03 Mar 2023 18:56:58 +0100
 
 strongswan (5.9.8-4) unstable; urgency=medium
 
