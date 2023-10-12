@@ -31,15 +31,15 @@ case "$1" in
 esac
 
 if [ "$1" = "purge" ] ; then
-        update-rc.d ipsec remove >/dev/null
         if getent passwd strongswan>/dev/null; then
-                if [ -x /usr/sbin/deluser ]; then
+                if which deluser > /dev/null; then
                         deluser --system strongswan
                 fi
         fi
 
         rm -rf /etc/ipsec.d/
         rm -rf /var/run/pluto/
+        rm -rf /var/lib/strongswan/
 fi
 
 # dh_installdeb will replace this with shell code automatically
