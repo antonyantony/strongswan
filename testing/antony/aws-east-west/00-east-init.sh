@@ -1,8 +1,9 @@
 set -eu
-/usr/local/sbin/ipsec stop  || echo ""
-cp ipsec.secrets /usr/local/etc/ipsec.secrets
-cp strongswan.conf /usr/local/etc/strongswan.conf
-cp east.swanctl.conf /usr/local/etc/swanctl/swanctl.conf
-/usr/local/sbin/ipsec restart
+/usr/sbin/ipsec stop  || echo ""
+cp ipsec.secrets /etc/ipsec.secrets
+cp strongswan.conf /etc/strongswan.conf
+[ -d /etc/swanctl/ ] || mkdir /etc/swanctl/
+cp east.swanctl.conf /etc/swanctl/swanctl.conf
+/usr/sbin/ipsec restart
 sleep 2
 swanctl --load-conn

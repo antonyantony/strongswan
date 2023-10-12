@@ -1,14 +1,14 @@
 #!/bin/bash
 set -eu
 
-CPUS=$(cat /proc/cpuinfo   | grep processor |wc -l)
-CPUS=4
+CPUS=$(cat /proc/cpuinfo | grep processor |wc -l)
+CPUS=31
 PCPU=${PCPU:-"-pcpu"}
 duration=${duration:-120}
 flows_form=${flows_form:-0}
 flows_to=${flows_to:-$CPUS}
 eth0=${eth0:-eth0}
-dst=${dst:-"192.0.2.252"}
+dst=${dst:-"192.1.20.252"}
 host=${host:-"sunset"}
 output=OUTPUT/${host}
 TASKSET="taskset 0x"
@@ -17,13 +17,13 @@ mkdir -p ${output}
 rm -f ${output}/tp-table.txt
 touch ${output}/tp-table.txt
 for j in $(seq "${flows_form}" "${flows_to}"); do
+	output=OUTPUT/${host}
         rm -f ${output}/iperf3-*.json
         j1=$((j + 1))
         iperf_output="${output}/iperf-json${PCPU}-${j1}"
         rm -fr ${iperf_output}
         mkdir ${iperf_output}
         ip -d -s link show dev ${eth0} > ${iperf_output}/${j1}-ip-link-show-dev-${eth0}.txt
-        echo "# before the iperf" > ${iperf_output}/${j1}-ip-xfrm-policy.txt
         for i in $(seq 0 "${j}"); do
                 i01=$((i + 1))
                 # icpu=$((i + 1 + 53))
@@ -39,7 +39,7 @@ for j in $(seq "${flows_form}" "${flows_to}"); do
         done
 	export output=${iperf_output}
         ag=$(./scripts/sunset-post.sh)
-        echo "${j1} ${ag}" >> ${output}/tp-table.txt
+        echo "${j1} ${ag}" >> OUTPUT/${host}/tp-table.txt
         echo "${j1} ${ag}"
         ip -d -s link show dev ${eth0} >> ${iperf_output}/${j1}-ip-link-show-dev-${eth0}.txt
 done
