@@ -2,6 +2,7 @@
 export DEB_LDFLAGS_MAINT_APPEND=-Wl,-O1
 #export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1 -Wl,-z,defs
 export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+export DEB_CFLAGS_MAINT_APPEND = -Wno-format -Wno-format-security -Wno-pointer-sign -Wfatal-errors
 
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-addrblock \
