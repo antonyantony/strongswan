@@ -3,7 +3,7 @@ host=${host:-"surise"}
 output=OUTPUT/${host}
 mkdir -p ${output}
 CPUS=$(cat /proc/cpuinfo   | grep processor |wc -l)
-CPUS=20
+CPUS=36
 flows_to=$CPUS
 flows_form=${flows_form:-5200}
 flows_to=$((5200 + CPUS))

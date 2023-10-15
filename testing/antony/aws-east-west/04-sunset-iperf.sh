@@ -1,14 +1,14 @@
 #!/bin/bash
 set -eu
-
-CPUS=$(cat /proc/cpuinfo | grep processor |wc -l)
-CPUS=31
+CPUS0=$(cat /proc/cpuinfo | grep processor |wc -l)
+CPUS=${CPUS:-$CPUS0}
 PCPU=${PCPU:-"-pcpu"}
 duration=${duration:-120}
 flows_form=${flows_form:-0}
 flows_to=${flows_to:-$CPUS}
 eth0=${eth0:-eth0}
-dst=${dst:-"192.1.20.252"}
+SUNRISE=${SUNRISE:-"192.1.20.252"}
+dst=${SUNRISE}
 host=${host:-"sunset"}
 output=OUTPUT/${host}
 TASKSET="taskset 0x"
@@ -29,13 +29,19 @@ for j in $(seq "${flows_form}" "${flows_to}"); do
                 # icpu=$((i + 1 + 53))
                 icpu=${i01}
                 printf -v i1 "%02d" ${i01}
-                ${TASKSET}$icpu iperf3 -t ${duration} -c ${dst} -p 52${i1} -J > ${iperf_output}/iperf3-52${i1}.json &
+                ${TASKSET}$icpu iperf3 -t ${duration} -c ${dst} -p 52${i1} -J > ${iperf_output}/iperf3-52${i1}.json&
+		echo "$!" > ${iperf_output}/iperf3-52${i1}.pid
         done
-        pids=$(pidof iperf3 | wc -l)
-	echo "# iperfs started ${pids} " >> ${iperf_output}/${j1}-iperf-pids.txt
-        while [ "${pids}" -gt 0 ] ; do
-                sleep 5;
-                pids=$(pidof iperf3 | wc -l)
+	npids=$(ls ${iperf_output}/iperf3-52*.pid | wc -l || echo 0)
+	echo "# iperfs started ${npids} "
+        while [ "${npids}" -gt 0 ] ; do
+                for f in ${iperf_output}/iperf3-52*.pid; do
+			pid=$(cat $f)
+			pidof iperf3 | grep -w $pid && break || echo ""
+			rm $f
+		done
+		npids=$(ls ${iperf_output}/iperf3-52*.pid | wc -l || echo 0)
+		sleep 5
         done
 	export output=${iperf_output}
         ag=$(./scripts/sunset-post.sh)
