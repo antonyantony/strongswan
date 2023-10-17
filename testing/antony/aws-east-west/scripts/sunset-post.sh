@@ -9,9 +9,9 @@ for f in ${output}/iperf3-*.json ; do
 	tp1=$(jq '.end.sum_sent.bits_per_second' ${f})
 	tp=$(bc <<< "${tp} + ${tp1}")
 done
-# tp=printf '%.0f' "$(($tp))"
+tpint=$(printf '%.0f' "${tp}")
 
-if [ "$tp" -gt 1073741824 ] ; then
+if [ "$tpint" -gt 1073741824 ] ; then
 	tp=$(bc -l <<< "scale=2; ${tp} / 1024^3")
 	prefix=" Gbps"
 fi
