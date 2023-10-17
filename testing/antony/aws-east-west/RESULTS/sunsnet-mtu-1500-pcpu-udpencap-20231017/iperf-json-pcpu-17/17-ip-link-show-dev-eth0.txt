@@ -1,0 +1,16 @@
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether 0a:00:4e:2d:49:8b brd ff:ff:ff:ff:ff:ff promiscuity 0  allmulti 0 minmtu 128 maxmtu 9216 addrgenmode eui64 numtxqueues 64 numrxqueues 64 gso_max_size 65536 gso_max_segs 65535 tso_max_size 65536 tso_max_segs 65535 gro_max_size 65536 parentbus pci parentdev 0000:00:05.0 
+    RX:      bytes    packets errors dropped  missed   mcast           
+       78077135338 1498536679      0       0       0       0 
+    TX:      bytes    packets errors dropped carrier collsns           
+    53265276897340 8636986578      0       0       0       0 
+    altname enp0s5
+    altname ens5
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether 0a:00:4e:2d:49:8b brd ff:ff:ff:ff:ff:ff promiscuity 0  allmulti 0 minmtu 128 maxmtu 9216 addrgenmode eui64 numtxqueues 64 numrxqueues 64 gso_max_size 65536 gso_max_segs 65535 tso_max_size 65536 tso_max_segs 65535 gro_max_size 65536 parentbus pci parentdev 0000:00:05.0 
+    RX:      bytes    packets errors dropped  missed   mcast           
+       79094378457 1518087212      0       0       0       0 
+    TX:      bytes    packets errors dropped carrier collsns           
+    53691949463981 8930838526      0       0       0       0 
+    altname enp0s5
+    altname ens5
