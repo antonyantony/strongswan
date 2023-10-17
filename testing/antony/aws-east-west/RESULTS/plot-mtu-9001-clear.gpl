@@ -6,4 +6,4 @@ set xrange [1:37]
 set yrange [:100]
 set key left top
 plot "sunsnet-mtu-9001-clear-20231017/tp-table.txt" with linespoints lw 4 lt rgb "blue" ti "Clear max 92 Gbps" , \
-     "sunsnet-mtu-1500-pcpu-udpencap-20231017/tp-table.txt" with linespoints lw 4 lt rgb "red" ti "UDP encap max 30 Gbps"
+     "sunsnet-mtu-1500-pcpu-udpencap-20231017/tp-table.txt" with linespoints lw 4 lt rgb "red" ti "ESP in UDP max 28 Gbps"
