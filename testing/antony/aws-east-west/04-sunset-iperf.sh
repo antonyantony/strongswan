@@ -3,7 +3,7 @@ set -eu
 CPUS0=$(cat /proc/cpuinfo | grep processor |wc -l)
 CPUS=${CPUS:-$CPUS0}
 PCPU=${PCPU:-"-pcpu"}
-duration=${duration:-120}
+duration=${duration:-40}
 flows_form=${flows_form:-0}
 flows_to=${flows_to:-$CPUS}
 eth0=${eth0:-eth0}
