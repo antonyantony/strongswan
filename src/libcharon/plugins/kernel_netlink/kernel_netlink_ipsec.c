@@ -1178,6 +1178,20 @@ METHOD(kernel_ipsec_t, get_features, kernel_feature_t,
 			(this->sa_lastused ? KERNEL_SA_USE_TIME : 0);
 }
 
+static bool add_uint8(struct nlmsghdr *hdr, int buflen,
+					   enum xfrm_attr_type_t type, uint8_t value)
+{
+	uint8_t *xvalue;
+
+	xvalue = netlink_reserve(hdr, buflen, type, sizeof(*xvalue));
+	if (!xvalue)
+	{
+		return FALSE;
+	}
+	*xvalue = value;
+	return TRUE;
+}
+
 /**
  * Get an SPI for a specific protocol from the kernel.
  */
@@ -1206,6 +1220,11 @@ static status_t get_spi_internal(private_kernel_netlink_ipsec_t *this,
 	userspi->info.family = src->get_family(src);
 	userspi->min = min;
 	userspi->max = max;
+
+	if (!add_uint8(hdr, sizeof(request), XFRMA_SA_DIR, XFRM_SA_DIR_IN))
+	{
+		return FAILED;
+	}
 
 	if (this->socket_xfrm->send(this->socket_xfrm, hdr, &out, &len) == SUCCESS)
 	{
@@ -1736,9 +1755,23 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 			default:
 				break;
 		}
+
+		DBG1(DBG_KNL, "AA2024 %s %d adding XFRMA_SA_DIR XFRM_SA_DIR_IN SPI %.8x",
+				__func__, __LINE__, ntohl(id->spi));
+		if (!add_uint8(hdr, sizeof(request), XFRMA_SA_DIR, XFRM_SA_DIR_IN))
+		{
+			goto failed;
+		}
 	}
 	else
 	{
+		DBG1(DBG_KNL, "AA2024 %s %d adding XFRMA_SA_DIR XFRM_SA_DIR_OUT SPI %.8x",
+				__func__, __LINE__, ntohl(id->spi));
+		if (!add_uint8(hdr, sizeof(request), XFRMA_SA_DIR, XFRM_SA_DIR_OUT))
+		{
+			goto failed;
+		}
+
 		switch (data->copy_dscp)
 		{
 			case DSCP_COPY_IN_ONLY:
