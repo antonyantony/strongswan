@@ -2073,11 +2073,9 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 
 	if (id->proto != IPPROTO_COMP)
 	{
-		/* generally, we don't need a replay window for outbound SAs, however,
-		 * when using ESN the kernel rejects the attribute if it is 0 */
 		if (!data->inbound && data->replay_window)
 		{
-			data->replay_window = data->esn ? 1 : 0;
+			data->replay_window = 0;
 		}
 		if (data->esn || data->replay_window > 32)
 		{
@@ -2094,10 +2092,10 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 				goto failed;
 			}
 			/* bmp_len contains number uf __u32's */
-			replay->bmp_len = bmp_size / sizeof(uint32_t);
+			replay->bmp_len = data->replay_window ? (bmp_size / sizeof(uint32_t)) : 0;
 			replay->replay_window = data->replay_window;
-			DBG2(DBG_KNL, "  using replay window of %u packets",
-				 data->replay_window);
+			DBG1(DBG_KNL, "  AA2024 using replay window of %u packets bmp len %u",
+				 data->replay_window, replay->bmp_len);
 
 			if (data->esn)
 			{
