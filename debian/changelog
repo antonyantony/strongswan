@@ -1,3 +1,9 @@
+strongswan (5.9.14-1) unstable; urgency=medium
+
+  * d/control: drop build-dep on systemd (Closes: #1060509)
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 28 Apr 2024 14:12:25 +0100
+
 strongswan (5.9.13-2) unstable; urgency=medium
 
   * d/control: drop build-dep on systemd (Closes: #1060509)
