@@ -348,6 +348,24 @@ table inet $NFTABLE {
 	}
 EOF
 	fi
+	#
+	# a virtual IP requires an INPUT and OUTPUT rule on the host
+	# or sometimes host access via the internal IP is needed
+	if [ -n "$PLUTO_MY_SOURCEIP" -o -n "$PLUTO_HOST_ACCESS" ]
+	then
+		nft -f - <<EOF
+table inet $NFTABLE {
+	chain input {
+			type filter hook input priority filter; policy drop;
+			ipsec in reqid $PLUTO_REQID iifname $PLUTO_INTERFACE ip saddr $PLUTO_PEER_CLIENT ip daddr $PLUTO_MY_CLIENT accept
+		}
+	chain output {
+			type filter hook output priority filter; policy drop;
+			ipsec out reqid $PLUTO_REQID oifname $PLUTO_INTERFACE ip saddr $PLUTO_MY_CLIENT ip daddr $PLUTO_PEER_CLIENT accept
+		}
+	}
+EOF
+	fi
 	;;
 up-client:iptables)
 	# connection to client subnet, with (left/right)firewall=yes, coming up
@@ -405,6 +423,14 @@ down-client:nftables)
 		nft_delete_rule $NFTABLE forward "ipsec in reqid $PLUTO_REQID iifname \"$PLUTO_INTERFACE\" ip saddr $PLUTO_PEER_CLIENT ip daddr $PLUTO_MY_CLIENT accept"
 		nft_delete_rule $NFTABLE forward "ipsec out reqid $PLUTO_REQID oifname \"$PLUTO_INTERFACE\" ip saddr $PLUTO_MY_CLIENT ip daddr $PLUTO_PEER_CLIENT accept"
 		nft_delete_chain $NFTABLE forward
+	fi
+	#
+	# a virtual IP requires an INPUT and OUTPUT rule on the host
+	# or sometimes host access via the internal IP is needed
+	if [ -n "$PLUTO_MY_SOURCEIP" -o -n "$PLUTO_HOST_ACCESS" ]
+	then
+		nft_delete_rule $NFTABLE input "ipsec in reqid $PLUTO_REQID iifname \"$PLUTO_INTERFACE\" ip saddr $PLUTO_PEER_CLIENT ip daddr $PLUTO_MY_CLIENT accept"
+		nft_delete_rule $NFTABLE output "ipsec out reqid $PLUTO_REQID oifname \"$PLUTO_INTERFACE\" ip saddr $PLUTO_MY_CLIENT ip daddr $PLUTO_PEER_CLIENT accept"
 	fi
 	;;
 down-client:iptables)
