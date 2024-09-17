@@ -173,6 +173,8 @@ case "$1:$*" in
 	;;
 iptables:iptables)	# due to (left/right)firewall; for default script only
 	;;
+nftables:nftables)	# due to (left/right)firewall; for default script only
+	;;
 custom:*)		# custom parameters (see above CAUTION comment)
 	;;
 *)	echo "$0: unknown parameters \`$*'" >&2
@@ -183,6 +185,36 @@ esac
 IPSEC_POLICY="-m policy --pol ipsec --proto $PLUTO_PROTO --reqid $PLUTO_REQID"
 IPSEC_POLICY_IN="$IPSEC_POLICY --dir in"
 IPSEC_POLICY_OUT="$IPSEC_POLICY --dir out"
+
+NFTABLE="strongswan"
+nft_delete_rule() {
+	local TABLE=$1
+	local CHAIN=$2
+	local RULEPAT=$3
+
+	t=$(nft list table inet $TABLE 2>/dev/null | wc -l)
+	if [ ${t} -gt 2 ]; then # 2 lines in an empty table
+		c=$(nft -a list chain inet $TABLE $CHAIN 2>/dev/null | wc -l)
+		if [ ${c} -gt 5 ]; then # 5 lines in an empty chain
+			h=$(nft -a list chain inet $TABLE $CHAIN | grep "$RULEPAT" | sed -e 's/.*handle\s*//g')
+			for i in $h; do
+				nft delete rule inet $TABLE $CHAIN handle $i
+			done
+		fi
+	fi
+}
+nft_delete_chain() {
+	local TABLE=$1
+	local CHAIN=$2
+
+	t=$(nft list table inet $TABLE 2>/dev/null | wc -l)
+	if [ ${t} -gt 2 ]; then # 2 lines in an empty table
+		c=$(nft -a list chain inet $TABLE $CHAIN 2>/dev/null | wc -l)
+		if [ ${c} -eq 5 ]; then # 5 lines in an empty chain
+			nft delete chain inet $TABLE $CHAIN
+		fi
+	fi
+}
 
 # use protocol specific options to set ports
 case "$PLUTO_MY_PROTOCOL" in
@@ -301,6 +333,22 @@ down-host:iptables)
 	  fi
 	fi
 	;;
+up-client:nftables)
+	# connection to client subnet, with (left/right)firewall=yes, coming up
+	# This is used only by the default updown script, not by your custom
+	# ones, so do not mess with it; see CAUTION comment up at top.
+	if [ "$PLUTO_PEER_CLIENT" != "$PLUTO_MY_SOURCEIP/32" ]; then
+		nft -f - <<EOF
+table inet $NFTABLE {
+	chain forward {
+			type filter hook forward priority filter; policy drop;
+			ipsec in reqid $PLUTO_REQID iifname $PLUTO_INTERFACE ip saddr $PLUTO_PEER_CLIENT ip daddr $PLUTO_MY_CLIENT accept
+			ipsec out reqid $PLUTO_REQID oifname $PLUTO_INTERFACE ip saddr $PLUTO_MY_CLIENT ip daddr $PLUTO_PEER_CLIENT accept
+		}
+	}
+EOF
+	fi
+	;;
 up-client:iptables)
 	# connection to client subnet, with (left/right)firewall=yes, coming up
 	# This is used only by the default updown script, not by your custom
@@ -347,6 +395,16 @@ up-client:iptables)
 	    logger -t $TAG -p $FAC_PRIO \
 	      "+ $PLUTO_PEER_ID $PLUTO_PEER_CLIENT == $PLUTO_PEER -- $PLUTO_ME == $PLUTO_MY_CLIENT"
 	  fi
+	fi
+	;;
+down-client:nftables)
+	# connection to client subnet, with (left/right)firewall=yes, going down
+	# This is used only by the default updown script, not by your custom
+	# ones, so do not mess with it; see CAUTION comment up at top.
+	if [ "$PLUTO_PEER_CLIENT" != "$PLUTO_MY_SOURCEIP/32" ]; then
+		nft_delete_rule $NFTABLE forward "ipsec in reqid $PLUTO_REQID iifname \"$PLUTO_INTERFACE\" ip saddr $PLUTO_PEER_CLIENT ip daddr $PLUTO_MY_CLIENT accept"
+		nft_delete_rule $NFTABLE forward "ipsec out reqid $PLUTO_REQID oifname \"$PLUTO_INTERFACE\" ip saddr $PLUTO_MY_CLIENT ip daddr $PLUTO_PEER_CLIENT accept"
+		nft_delete_chain $NFTABLE forward
 	fi
 	;;
 down-client:iptables)
