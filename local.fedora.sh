@@ -1,3 +1,4 @@
+./autogen.sh  && autoconf -1
 export prefix="/usr"
 export CFLAGS="-g -O0 -Wall -Wno-format -Wno-format-security -Wno-pointer-sign -Wfatal-errors -Werror"
 ./configure --prefix=${prefix} \
@@ -9,4 +10,5 @@ export CFLAGS="-g -O0 -Wall -Wno-format -Wno-format-security -Wno-pointer-sign -
     --with-piddir=/run/strongswan \
     --enable-systemd \
     --enable-openssl \
-	--enable-bypass-lan
+    --enable-bypass-lan
+make -j 10 install
