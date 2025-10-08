@@ -1,0 +1,5 @@
+MYDIR=$(dirname $(readlink -f $0))
+KERNELVERSION=upstream
+: ${KERNELCONFIG=$MYDIR/../config/kernel/config-6.17}
+: ${TODAYDIR=/srv/strongswan-testing/testresults/all}
+rm -fr ${TODAYDIR}
