@@ -5,6 +5,7 @@ DIR=$(dirname `readlink -f $0`)
 . $DIR/function.sh
 
 echo "Building guest kernel version $KERNELVERSION"
+log_action "Building guest kernel version $KERNELVERSION in $BUILDDIR using config $KERNELCONFIG talball $KERNELTARBALL"
 
 [ -f "$KERNELCONFIG" ] || die "Kernel config $KERNELCONFIG not found"
 
@@ -12,7 +13,9 @@ check_commands bunzip2 bzcat make wget
 
 cd $BUILDDIR
 
-if [ ! -f "$KERNELTARBALL" ]
+KERNELDIR=$BUILDDIR/$KERNEL
+
+if [ ! -d "$KERNELDIR" ] && [ ! -f "$KERNELTARBALL" ]
 then
 	url=https://cdn.kernel.org/pub/linux/kernel/v${KERNELVERSION:0:1}.x/$KERNELTARBALL
 	log_action "Downloading $url"
@@ -25,8 +28,6 @@ then
 	log_action "Downloading $url"
 	execute "wget -q $url"
 fi
-
-KERNELDIR=$BUILDDIR/$KERNEL
 
 if [ ! -d "$KERNELDIR" ]
 then
