@@ -53,5 +53,6 @@ fi
 echo "Creating kernel configuration, you might get prompted for new parameters"
 make oldconfig 2>&1 | tee -a $LOGFILE
 
-log_action "Compiling the kernel"
-execute "make -j5"
+CPUS=$(nproc)
+log_action "Compiling the kernel with -j$CPUS"
+execute "make -j$CPUS"
