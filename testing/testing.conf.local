@@ -1,4 +1,3 @@
-DIR=$(dirname $(readlink -f $0))
+MYDIR=$(dirname $(readlink -f $0))
 KERNELVERSION=upstream
-: ${KERNELCONFIG=$DIR/../config/kernel/config-6.17}
-
+: ${KERNELCONFIG=$MYDIR/../config/kernel/config-6.17}
