@@ -1,0 +1,15 @@
+alice::iptables-restore < /etc/iptables.rules
+sun::iptables-restore < /etc/iptables.rules
+alice::cd /etc/swanctl; rm x509ca/* x509/* rsa/*
+sun::cd /etc/swanctl; rm x509ca/* x509/* rsa/*
+moon::iptables -t nat -A POSTROUTING -o eth0 -s 10.1.0.0/16 -p udp -j SNAT --to-source PH_IP_MOON:1024-1100
+sun::systemctl start strongswan
+alice::systemctl start strongswan
+sun::expect-connection nat-t
+alice::expect-connection nat-t
+alice::swanctl --initiate --child nat-t
+alice::ping -c 1 -W 1 PH_IP_BOB
+moon::iptables -t nat -F
+moon::iptables -t nat -A POSTROUTING -o eth0 -s 10.1.0.0/16 -p udp -j SNAT --to-source PH_IP_MOON:8000-8099
+moon::conntrack -F
+alice::ping -c 1 -W 1 PH_IP_BOB
