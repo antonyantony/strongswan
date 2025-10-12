@@ -8,7 +8,7 @@ sun::  swanctl --list-sas --raw 2> /dev/null::mobike.*state=ESTABLISHED local-ho
 alice::ping -c 1 PH_IP_BOB::64 bytes from PH_IP_BOB: icmp_.eq=1::YES
 sun::tcpdump::alice1.strongswan.org.*sun.strongswan.org: ESP.*seq=0x1::YES
 sun::tcpdump::sun.strongswan.org.*alice1.strongswan.org: ESP.*seq=0x1::YES
-moon::tcpdump::alice.strongswan.org.*sun.strongswan.org.*: ESP.*seq=0x2::YES
-moon::tcpdump::sun.strongswan.org.*alice.strongswan.org.*: ESP.*seq=0x2::YES
+moon::tcpdump::alice.strongswan.org.*sun.strongswan.org.*: ESP.*seq=0x9::YES
+moon::tcpdump::sun.strongswan.org.*alice.strongswan.org.*: ESP.*seq=0x9::YES
 bob::tcpdump::10.3.0.3.*bob.strongswan.org.*ICMP echo request::2
 bob::tcpdump::bob.strongswan.org.*10.3.0.3.*ICMP echo reply::2
