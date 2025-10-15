@@ -1,0 +1,9 @@
+moon::iptables-restore < /etc/iptables.flush # fix the iptable rule
+sun::iptables-restore < /etc/iptables.flush # fix rules to allow icmp?
+sun::ip route add 10.2.0.16/30 via PH_IP_BOB
+bob::ip addr add 10.2.0.16/16 dev eth0
+moon::systemctl start strongswan
+sun::systemctl start strongswan
+moon::expect-connection gw-gw
+sun::expect-connection gw-gw
+moon::swanctl --initiate --child net-net 2> /dev/null

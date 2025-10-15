@@ -1,0 +1,7 @@
+A tunnel from <b>alice</b> to <b>moon</b> connects the subnets, with <b>bob</b>
+located behind the non-IPsec gateway <b>sun</b> and ureachable IPs.
+The gateway <b>sun</b> generates ICMP Destination Unreachable messages with
+source IP addresses outside the IPsec tunnel IP range. These messages should
+ be forwarded by <b>moon</b> through the tunnel back to <b>alice</b>,
+because ICMP error forwarding is enabled on <b>alice</b> and <b>moon</b>.
+The authentication is based on <b>PSK</b>.

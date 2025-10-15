@@ -1,0 +1,7 @@
+moon::swanctl --terminate --ike rw 2> /dev/null
+moon::systemctl stop strongswan
+alice::systemctl stop strongswan
+moon::iptables-restore < /etc/iptables.flush
+alice::iptables-restore < /etc/iptables.flush
+moon::ip route del 10.2.0.8/30 via PH_IP_SUN
+sun::ip route del PH_IP_ALICE/32 via PH_IP_MOON
