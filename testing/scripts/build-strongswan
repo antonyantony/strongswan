@@ -1,5 +1,6 @@
 #!/bin/bash
 
+export HOME=/root
 DIR=$(dirname `readlink -f $0`)
 . $DIR/../testing.conf
 . $DIR/function.sh
