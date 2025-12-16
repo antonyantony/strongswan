@@ -164,6 +164,7 @@ if [ -z "$TARBALL" ]; then
 		log_action "Preparing source tree"
 		execute_chroot 'autoreconf -i /root/strongswan'
 	fi
+	execute_chroot 'git config --global --add safe.directory /root/shared/'
 fi
 
 RECPDIR=$DIR/recipes
