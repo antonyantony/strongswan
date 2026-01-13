@@ -1,4 +1,4 @@
-<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+<domain type='kvm'>
   <name>venus</name>
   <uuid>f0838df9-7cc0-84f5-6c14-2d16ab002e8d</uuid>
   <memory unit='MiB'>150</memory>
@@ -63,10 +63,4 @@
       <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
     </memballoon>
   </devices>
-  <qemu:commandline>
-    <qemu:arg value='-chardev'/>
-    <qemu:arg value='socket,path=/tmp/venus-gdb-socket,server=on,nowait,id=gdb0'/>
-    <qemu:arg value='-gdb'/>
-    <qemu:arg value='chardev:gdb0'/>
-  </qemu:commandline>
 </domain>

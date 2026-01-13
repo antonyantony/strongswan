@@ -1,4 +1,4 @@
-<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+<domain type='kvm'>
   <name>winnetou</name>
   <uuid>b1d3d2f7-e20b-ab95-277e-66d4cac33cc3</uuid>
   <memory unit='MiB'>200</memory>
@@ -71,10 +71,4 @@
       <backend model='random'>/dev/urandom</backend>
     </rng>
   </devices>
-    <qemu:commandline>
-    <qemu:arg value='-chardev'/>
-    <qemu:arg value='socket,path=/tmp/winnetou-gdb-socket,server=on,nowait,id=gdb0'/>
-    <qemu:arg value='-gdb'/>
-    <qemu:arg value='chardev:gdb0'/>
-  </qemu:commandline>
 </domain>

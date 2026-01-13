@@ -1,4 +1,4 @@
-<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+<domain type='kvm'>
   <name>carol</name>
   <uuid>6bc2eef5-7faf-cde0-5f27-6fc29f93bc3d</uuid>
   <memory unit='MiB'>150</memory>
@@ -66,10 +66,4 @@
       <backend model='random'>/dev/urandom</backend>
     </rng>
   </devices>
-  <qemu:commandline>
-    <qemu:arg value='-chardev'/>
-    <qemu:arg value='socket,path=/tmp/carol-gdb-socket,server=on,nowait,id=gdb0'/>
-    <qemu:arg value='-gdb'/>
-    <qemu:arg value='chardev:gdb0'/>
-  </qemu:commandline>
 </domain>
