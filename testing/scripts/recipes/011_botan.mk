@@ -20,8 +20,10 @@ all: install
 .$(PKG)-cloned:
 	[ -d $(PKG) ] || git clone $(SRC) $(PKG)
 	@touch $@
+	git config --global --add safe.directory /root/shared/compile/$(PKG)
 
 .$(PKG)-checkout-$(REV): .$(PKG)-cloned
+	git config --global --add safe.directory /root/shared/compile/$(PKG)
 	cd $(PKG) && git fetch && git checkout $(REV)
 	@rm -f .$(PKG)-checkout-* && touch $@
 
