@@ -1,0 +1,15 @@
+The roadwarrior <b>alice</b> is sitting behind the NAT router <b>moon</b>.
+<b>alice</b> builds up a tunnel to gateway <b>sun</b> in order to reach
+<b>bob</b> in the subnet behind. Gateway <b>sun</b> assigns <b>XFRM marks</b>
+to the inbound and outbound IPsec SAs using <b>mark_in</b>, <b>set_mark_in</b>
+and <b>mark_out</b>. Return traffic from <b>bob</b> is marked via an
+<b>iptables mangle</b> rule so that it matches the outbound XFRM policy.
+<p/>
+To simulate a NAT mapping change, the SNAT port range on <b>moon</b> is
+changed while the tunnel is active and the conntrack table is flushed.
+<b>alice</b> sends a ping which triggers MOBIKE on <b>sun</b>, causing
+strongSwan to use update or when the kernel supports  the new
+<b>XFRM_MSG_MIGRATE_STATE</b> to migrate the IPsec SAs
+to the new endpoint. The test verifies that the XFRM marks and their masks
+are preserved on both SAs after migration, and that traffic continues to
+flow correctly through the tunnel.

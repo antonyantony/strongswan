@@ -1,0 +1,13 @@
+alice::swanctl --list-sas --raw 2> /dev/null::mobike.*version=2 state=ESTABLISHED local-host=PH_IP_ALICE local-port=4500 local-id=alice@strongswan.org remote-host=PH_IP_SUN remote-port=4500 remote-id=sun.strongswan.org.*mode=IPTFS protocol=ESP encap=yes spi-in.*local-ts=\[10.1.0.0/16] remote-ts=\[10.2.0.0/16]::YES
+sun::swanctl --list-sas --raw 2> /dev/null::mobike.*version=2 state=ESTABLISHED local-host=PH_IP_SUN local-port=4500 local-id=sun.strongswan.org remote-host=PH_IP_MOON remote-port=4... remote-id=alice@strongswan.org.*mode=IPTFS protocol=ESP encap=yes spi-in.*local-ts=\[10.2.0.0/16] remote-ts=\[10.1.0.0/16]::YES
+alice::ping -c 1 -s 1472 PH_IP_BOB::1480 bytes from PH_IP_BOB: icmp_.eq=1::YES
+moon::iptables -t nat -F
+moon::iptables -t nat -A POSTROUTING -o eth0 -s 10.1.0.0/16 -p udp -j SNAT --to-source PH_IP_MOON:5000-5100
+moon::conntrack -F
+alice::ping -c 5 -s 1472 PH_IP_BOB::1480 bytes from PH_IP_BOB::YES
+sun::cat /var/log/daemon.log::remote endpoint changed from PH_IP_MOON\[4...] to PH_IP_MOON\[5...]::YES
+sun::swanctl --list-sas --raw 2> /dev/null::mobike.*state=ESTABLISHED local-host=PH_IP_SUN local-port=4500 local-id=sun.strongswan.org remote-host=PH_IP_MOON remote-port=5... remote-id=alice@strongswan.org.*mode=IPTFS protocol=ESP encap=yes spi-in.*local-ts=\[10.2.0.0/16] remote-ts=\[10.1.0.0/16]::YES
+alice::ping -c 1 -s 1472 PH_IP_BOB::1480 bytes from PH_IP_BOB: icmp_.eq=1::YES
+moon::tcpdump::moon.strongswan.org.*sun.strongswan.org.*UDP-encap: ESP::14
+bob::tcpdump::alice.strongswan.org.*bob.strongswan.org.*ICMP echo request::7
+bob::tcpdump::bob.strongswan.org.*alice.strongswan.org.*ICMP echo reply::7

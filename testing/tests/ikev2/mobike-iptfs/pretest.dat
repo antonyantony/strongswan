@@ -1,0 +1,13 @@
+sun::iptables-restore < /etc/iptables.rules
+sun::iptables -A INPUT  -i eth0 -p udp --dport 500  -j ACCEPT
+sun::iptables -A OUTPUT -o eth0 -p udp --sport 500  -j ACCEPT
+sun::iptables -A INPUT  -i eth0 -p udp --dport 4500 -j ACCEPT
+sun::iptables -A OUTPUT -o eth0 -p udp --sport 4500 -j ACCEPT
+sun::iptables -A FORWARD -m policy --dir in  --pol ipsec --proto esp -j ACCEPT
+sun::iptables -A FORWARD -m policy --dir out --pol ipsec --proto esp -j ACCEPT
+moon::iptables -t nat -A POSTROUTING -o eth0 -s 10.1.0.0/16 -p udp -j SNAT --to-source PH_IP_MOON:4000-4100
+alice::systemctl start strongswan
+sun::systemctl start strongswan
+alice::expect-connection mobike
+sun::expect-connection mobike
+alice::swanctl --initiate --child mobike 2> /dev/null

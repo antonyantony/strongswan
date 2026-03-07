@@ -1,0 +1,9 @@
+alice::iptables-restore < /etc/iptables.rules
+sun::iptables-restore < /etc/iptables.rules
+moon::iptables -t nat -A POSTROUTING -o eth0 -s 10.1.0.0/16 -p udp -j SNAT --to-source PH_IP_MOON:4000-4100
+sun::iptables -t mangle -A PREROUTING -d PH_IP_ALICE -j MARK --set-mark 3
+alice::systemctl start strongswan
+sun::systemctl start strongswan
+alice::expect-connection mobike
+sun::expect-connection mobike
+alice::swanctl --initiate --child mobike 2> /dev/null
