@@ -1764,7 +1764,7 @@ static status_t update_sas(private_child_sa_t *this, host_t *me, host_t *other,
 			.new_reqid = reqid,
 		};
 		/* TEMP debug */
-		DBG1(DBG_CHD, "AA Debug Passed %s %d %s SAD entry with SPI %.8x from %#H..%#H to %#H..%#H reqid %u", __func__, __LINE__, use_xfrm_migrate_state() ? "migrating" : "updating %s", ntohl(id.spi), id.src, id.dst, sa.new_src, sa.new_dst, sa.new_reqid, "inbound");
+		DBG1(DBG_CHD, "AA Debug Passed %s %d %s SAD entry with SPI %.8x from %#H..%#H to %#H..%#H reqid %u dir %s", __func__, __LINE__, use_xfrm_migrate_state() ? "migrating" : "updating %s", ntohl(id.spi), id.src, id.dst, sa.new_src, sa.new_dst, sa.new_reqid, "inbound");
 
 		if (charon->kernel->update_sa(charon->kernel, &id, &sa) == NOT_SUPPORTED)
 		{
@@ -1795,6 +1795,7 @@ static status_t update_sas(private_child_sa_t *this, host_t *me, host_t *other,
 		{
 			return NOT_SUPPORTED;
 		}
+		DBG1(DBG_CHD, "AA Debug Passed %s %d %s SAD entry with SPI %.8x from %#H..%#H to %#H..%#H reqid %u dir %s", __func__, __LINE__, use_xfrm_migrate_state() ? "migrating" : "updating %s", ntohl(id.spi), id.src, id.dst, sa.new_src, sa.new_dst, sa.new_reqid, "outbound");
 
 	}
 

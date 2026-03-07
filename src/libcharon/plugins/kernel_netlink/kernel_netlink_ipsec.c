@@ -2707,6 +2707,8 @@ METHOD(kernel_ipsec_t, migrate_sa, status_t,
 	host2xfrm(data->new_dst, &migrate->new_daddr);
 	migrate->new_reqid = data->new_reqid;
 	migrate->new_family = data->new_dst->get_family(data->new_dst);
+	migrate->old_mark.v = id->mark.value;
+	migrate->old_mark.m = id->mark.mask;
 
 	if(data->new_encap)
 	{
