@@ -2710,7 +2710,7 @@ METHOD(kernel_ipsec_t, migrate_sa, status_t,
 	migrate->old_mark.v = id->mark.value;
 	migrate->old_mark.m = id->mark.mask;
 
-	if(data->new_encap)
+	if (data->new_encap)
 	{
 		encap = netlink_reserve(hdr, sizeof(request), XFRMA_ENCAP,
 														sizeof(struct xfrm_encap_tmpl));
@@ -2718,17 +2718,56 @@ METHOD(kernel_ipsec_t, migrate_sa, status_t,
 		{
 			goto failed;
 		}
-
 		encap->encap_type = UDP_ENCAP_ESPINUDP;
 		encap->encap_sport = ntohs(data->new_src->get_port(data->new_src));
 		encap->encap_dport = ntohs(data->new_dst->get_port(data->new_dst));
-		memset(&encap->encap_oa, 0, sizeof (xfrm_address_t));
+		memset(&encap->encap_oa, 0, sizeof(xfrm_address_t));
 	}
+	else if (data->encap)
+	{
+		/* encap removed: send sentinel encap_type=0 to clear */
+		encap = netlink_reserve(hdr, sizeof(request), XFRMA_ENCAP,
+														sizeof(struct xfrm_encap_tmpl));
+		if (!encap)
+		{
+			goto failed;
+		}
+		encap->encap_type = 0;
+	}
+	/* else: no encap change, omit XFRMA_ENCAP to inherit from kernel */
 
 	format_mark(markstr, sizeof(markstr), id->mark);
-	DBG2(DBG_KNL, "%s %d migrating SAD entry with SPI %.8x%s from %#H..%#H to "
-		 "%#H..%#H reqid %u", __func__, __LINE__, ntohl(id->spi), markstr, id->src, id->dst,
-		 data->new_src, data->new_dst, data->new_reqid);
+
+	{ /* AA fancy diagnstics for encap changes in the debug log not necesssary */
+		char encapstr[128];
+		int old_sport = id->src->get_port(id->src);
+		int old_dport = id->dst->get_port(id->dst);
+		int new_sport = data->new_src->get_port(data->new_src);
+		int new_dport = data->new_dst->get_port(data->new_dst);
+
+		if (data->encap && data->new_encap)
+		{
+			if (old_sport != new_sport || old_dport != new_dport)
+				snprintf(encapstr, sizeof(encapstr),
+					"udp:%d->%d to udp:%d->%d (port change)",
+					old_sport, old_dport, new_sport, new_dport);
+			else
+				snprintf(encapstr, sizeof(encapstr),
+					"udp:%d->%d (unchanged)", old_sport, old_dport);
+		}
+		else if (data->new_encap)
+			snprintf(encapstr, sizeof(encapstr),
+				"none to udp:%d->%d", new_sport, new_dport);
+		else if (data->encap)
+			snprintf(encapstr, sizeof(encapstr),
+				"udp:%d->%d to none", old_sport, old_dport);
+		else
+			snprintf(encapstr, sizeof(encapstr), "none (inherit)");
+
+		DBG2(DBG_KNL, "%s %d migrating SAD entry with SPI %.8x%s from %#H..%#H to "
+			 "%#H..%#H reqid %u encap %s", __func__, __LINE__, ntohl(id->spi), markstr,
+			 id->src, id->dst, data->new_src, data->new_dst, data->new_reqid, encapstr);
+	}
 
 	if (this->socket_xfrm->send_ack(this->socket_xfrm, hdr) != SUCCESS)
 	{
