@@ -1,0 +1,8 @@
+Alice behind a NAT connects to sun using IKEv2 with MOBIKE and IP-TFS mode.
+The connection is established with ESP-in-UDP encapsulation. A large ping of
+1472 bytes, maximum size ping to fit into 1500 bytes mtu, is sent, causing
+IPTFS to split the inner IP packet across multiple ESP frames at the origin
+<b>alice</b>. The NAT mapping on moon is then changed to trigger a MOBIKE
+
+Endpoint update. After migration, IP-TFS connectivity is verified again with
+another large ping.
