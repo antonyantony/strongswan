@@ -141,6 +141,8 @@ struct kernel_ipsec_update_sa_t {
 	bool new_encap;
 	/** New reqid, or 0 if unchanged */
 	uint32_t new_reqid;
+	/** TRUE if SA is in transport mode (selector is host-to-host /32 or /128) */
+	bool transport_mode;
 };
 
 /**
