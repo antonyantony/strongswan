@@ -45,6 +45,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/utsname.h>
+#include <sys/utsname.h>
 #include <stdint.h>
 #include <linux/ipsec.h>
 #include <linux/netlink.h>
@@ -165,6 +166,7 @@ ENUM(xfrm_msg_names, XFRM_MSG_NEWSA, __XFRM_MSG_MAX,
 	"XFRM_MSG_MAPPING",
 	"XFRM_MSG_SETDEFAULT",
 	"XFRM_MSG_GETDEFAULT",
+	"XFRM_MSG_MIGRATE_STATE",
 	"XFRM_MSG_MAX",
 );
 
@@ -374,6 +376,11 @@ struct private_kernel_netlink_ipsec_t {
 	 * Whether the kernel supports setting the SA direction
 	 */
 	bool sa_dir;
+
+	/**
+	 * Whether the kernel XFRMA_MSG_MIGRATE_STATE supported/enabled
+	 */
+	bool migrate_enabled;
 
 	/**
 	 * Whether to install routes along policies
@@ -1218,11 +1225,72 @@ CALLBACK(receive_events, void,
 	}
 }
 
+/**
+ * run time check of kernel XFRM_MSG_MIGRATE_STATE enabled
+ */
+static bool migrate_enabled(private_kernel_netlink_ipsec_t *this)
+{
+	netlink_buf_t request;
+	struct nlmsghdr *hdr, *out = NULL;
+	size_t len;
+	bool ret = FALSE;
+
+	memset(&request, 0, sizeof(request));
+	DBG2(DBG_KNL, "Check XFRM_MSG_MIGRATE_STATE support in the running kernel");
+
+	hdr = &request.hdr;
+	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	hdr->nlmsg_type = XFRM_MSG_MIGRATE_STATE;
+	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(struct xfrm_userpolicy_id));
+
+	netlink_reserve(hdr, sizeof(request), XFRMA_MIGRATE,
+			sizeof(struct xfrm_user_migrate));
+
+	if (this->socket_xfrm->send(this->socket_xfrm, hdr, &out, &len) == SUCCESS)
+	{
+		hdr = out;
+		while (NLMSG_OK(hdr, len))
+		{
+			switch (hdr->nlmsg_type)
+			{
+				case NLMSG_ERROR:
+					{
+						struct nlmsgerr *err = NLMSG_DATA(hdr);
+						if (-err->error == ENOPROTOOPT)
+						{
+							DBG1(DBG_KNL, "XFRM_MSG_MIGRATE_STATE not supported");
+						}
+						else
+						{
+							ret = TRUE;
+							DBG1(DBG_KNL, "enable XFRM_MSG_MIGRATE_STATE %s (%d)",
+									strerror(-err->error), -err->error);
+						}
+						break;
+					}
+				default:
+					hdr = NLMSG_NEXT(hdr, len);
+					continue;
+				case NLMSG_DONE:
+					break;
+			}
+			break;
+		}
+	}
+
+	memwipe(out, len);
+	free(out);
+
+	return ret;
+}
+
+
 METHOD(kernel_ipsec_t, get_features, kernel_feature_t,
 	private_kernel_netlink_ipsec_t *this)
 {
 	return KERNEL_ESP_V3_TFC | KERNEL_POLICY_SPI | KERNEL_ACQUIRE_SEQ |
-			(this->sa_lastused ? KERNEL_SA_USE_TIME : 0);
+			(this->sa_lastused ? KERNEL_SA_USE_TIME : 0) |
+			(this->migrate_enabled ? KERNEL_MIGRATE : 0);
 }
 
 /**
@@ -2611,6 +2679,83 @@ METHOD(kernel_ipsec_t, del_sa, status_t,
 	}
 }
 
+METHOD(kernel_ipsec_t, migrate_sa, status_t,
+	private_kernel_netlink_ipsec_t *this, kernel_ipsec_sa_id_t *id,
+	kernel_ipsec_update_sa_t *data)
+{
+	netlink_buf_t request;
+	struct nlmsghdr *hdr;
+	struct xfrm_user_migrate_state *migrate;
+	struct xfrm_encap_tmpl* encap = NULL;
+	status_t status = FAILED;
+	char markstr[32] = "";
+
+	memset(&request, 0, sizeof(request));
+
+	hdr = &request.hdr;
+	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	hdr->nlmsg_type = XFRM_MSG_MIGRATE_STATE;
+	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(struct xfrm_user_migrate_state));
+
+	migrate = NLMSG_DATA(hdr);
+	host2xfrm(id->dst, &migrate->id.daddr);
+	migrate->id.spi = id->spi;
+	migrate->id.proto = id->proto;
+	migrate->id.family = id->dst->get_family(id->dst);
+
+	host2xfrm(data->new_src, &migrate->new_saddr);
+	host2xfrm(data->new_dst, &migrate->new_daddr);
+	migrate->new_reqid = data->new_reqid;
+	migrate->new_family = data->new_dst->get_family(data->new_dst);
+
+	if(data->new_encap)
+	{
+		encap = netlink_reserve(hdr, sizeof(request), XFRMA_ENCAP,
+														sizeof(struct xfrm_encap_tmpl));
+		if (!encap)
+		{
+			goto failed;
+		}
+
+		encap->encap_type = UDP_ENCAP_ESPINUDP;
+		encap->encap_sport = ntohs(data->new_src->get_port(data->new_src));
+		encap->encap_dport = ntohs(data->new_dst->get_port(data->new_dst));
+		memset(&encap->encap_oa, 0, sizeof (xfrm_address_t));
+	}
+
+	format_mark(markstr, sizeof(markstr), id->mark);
+	DBG2(DBG_KNL, "%s %d migrating SAD entry with SPI %.8x%s from %#H..%#H to "
+		 "%#H..%#H reqid %u", __func__, __LINE__, ntohl(id->spi), markstr, id->src, id->dst,
+		 data->new_src, data->new_dst, data->new_reqid);
+
+	if (this->socket_xfrm->send_ack(this->socket_xfrm, hdr) != SUCCESS)
+	{
+		DBG1(DBG_KNL, "unable to migrate SAD entry with SPI %.8x",
+				ntohl(id->spi));
+		goto failed;
+	}
+
+	/* if IPComp is used, add IPComp SA */
+	if (data->cpi)
+	{
+					migrate->id.spi = data->cpi;
+					migrate->id.proto = IPPROTO_COMP;
+					if (this->socket_xfrm->send_ack(this->socket_xfrm, hdr) != SUCCESS)
+					{
+									DBG1(DBG_KNL, "unable to migrate SAD entry with CPI %.8x SPI %.8x",
+																	ntohl(data->cpi), ntohl(id->spi));
+									goto failed;
+					}
+	}
+
+	status = SUCCESS;
+
+failed:
+	memwipe(&request, sizeof(request));
+
+	return status;
+}
+
 METHOD(kernel_ipsec_t, update_sa, status_t,
 	private_kernel_netlink_ipsec_t *this, kernel_ipsec_sa_id_t *id,
 	kernel_ipsec_update_sa_t *data)
@@ -2631,6 +2776,9 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 	status_t status = FAILED;
 	traffic_selector_t *ts;
 	char markstr[32] = "";
+
+	if (sa_confidential())
+		return NOT_SUPPORTED;
 
 	/* if IPComp is used, we first update the IPComp SA */
 	if (data->cpi)

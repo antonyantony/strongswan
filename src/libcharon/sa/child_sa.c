@@ -1190,6 +1190,17 @@ static bool require_policy_update(private_child_sa_t *this)
 }
 
 /**
+ * Check kernel interface support MIGRATE SA
+ */
+static bool use_xfrm_migrate_state()
+{
+	kernel_feature_t f;
+
+	f = charon->kernel->get_features(charon->kernel);
+	return (f & KERNEL_MIGRATE);
+}
+
+/**
  * Prepare SA config to install/delete policies
  */
 static void prepare_sa_cfg(private_child_sa_t *this, ipsec_sa_cfg_t *my_sa,
@@ -1752,8 +1763,10 @@ static status_t update_sas(private_child_sa_t *this, host_t *me, host_t *other,
 			.new_encap = encap,
 			.new_reqid = reqid,
 		};
-		if (charon->kernel->update_sa(charon->kernel, &id,
-									  &sa) == NOT_SUPPORTED)
+		/* TEMP debug */
+		DBG1(DBG_CHD, "AA Debug Passed %s %d %s SAD entry with SPI %.8x from %#H..%#H to %#H..%#H reqid %u", __func__, __LINE__, use_xfrm_migrate_state() ? "migrating" : "updating %s", ntohl(id.spi), id.src, id.dst, sa.new_src, sa.new_dst, sa.new_reqid, "inbound");
+
+		if (charon->kernel->update_sa(charon->kernel, &id, &sa) == NOT_SUPPORTED)
 		{
 			return NOT_SUPPORTED;
 		}
@@ -1778,12 +1791,13 @@ static status_t update_sas(private_child_sa_t *this, host_t *me, host_t *other,
 			.new_encap = encap,
 			.new_reqid = reqid,
 		};
-		if (charon->kernel->update_sa(charon->kernel, &id,
-									  &sa) == NOT_SUPPORTED)
+		if (charon->kernel->update_sa(charon->kernel, &id, &sa) == NOT_SUPPORTED)
 		{
 			return NOT_SUPPORTED;
 		}
+
 	}
+
 	/* we currently ignore the actual return values above */
 	return SUCCESS;
 }
@@ -1894,6 +1908,10 @@ METHOD(child_sa_t, update, status_t,
 			{
 				DBG1(DBG_CHD, "allocating new reqid for updated SA failed");
 			}
+		}
+		else
+		{
+			new_reqid = this->reqid;  // AA FIXME update_sas need only whehn change migrate need reqid
 		}
 
 		/* update the IPsec SAs */
