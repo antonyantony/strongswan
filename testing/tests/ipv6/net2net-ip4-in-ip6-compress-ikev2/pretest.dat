@@ -1,0 +1,12 @@
+#moon::iptables-restore < /etc/iptables.drop
+#sun::iptables-restore < /etc/iptables.drop
+moon::ip6tables-restore < /etc/ip6tables.rules
+sun::ip6tables-restore < /etc/ip6tables.rules
+#moon::iptables -I FORWARD -s 10.1.0.0/16 -d 10.2.0.0/16 -j ACCEPT
+#moon::iptables -I FORWARD -s 10.2.0.0/16 -d 10.1.0.0/16 -j ACCEPT
+#sun::iptables -I FORWARD -s 10.1.0.0/16 -d 10.2.0.0/16 -j ACCEPT
+#sun::iptables -I FORWARD -s 10.2.0.0/16 -d 10.1.0.0/16 -j ACCEPT
+moon::systemctl start strongswan
+sun::systemctl start strongswan
+moon::expect-connection net-net
+sun::expect-connection net-net
