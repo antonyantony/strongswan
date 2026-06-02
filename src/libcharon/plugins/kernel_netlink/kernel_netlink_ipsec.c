@@ -1859,7 +1859,10 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		case MODE_BEET:
 		case MODE_TRANSPORT:
 			if (original_mode == MODE_TUNNEL)
-			{	/* don't install selectors for switched SAs.  because only one
+			{
+				if (!data->inbound)
+					sa->flags |= XFRM_STATE_AF_UNSPEC;
+				/* don't install selectors for switched SAs.  because only one
 				 * selector can be installed other traffic would get dropped */
 				break;
 			}
