@@ -1,0 +1,9 @@
+An IKEv2 tunnel between gateways <b>moon</b> and <b>sun</b> connects two IPv6 subnets over
+IPv4, using ESP for encryption and IPComp for compression. Without IPComp, the ESP SA is
+in tunnel mode and adds the IPv4 outer header. With IPComp, the bundle is switched:
+IPComp takes tunnel mode and adds the outer header, while ESP is installed in transport
+mode — only one SA in a bundle can add the outer header. Both SAs carry IPv4 endpoints
+but match IPv6 inner traffic, requiring XFRM_STATE_AF_UNSPEC on both. When <b>alice</b>
+pings <b>bob</b>, packets travel as IPv4 | ESP | IPComp | IPv6. Authentication uses
+X.509 certificates. Two ping sizes are used: a small packet to establish the tunnel and
+a larger one to verify compression, staying within the reduced MTU of the IPv4 outer.
