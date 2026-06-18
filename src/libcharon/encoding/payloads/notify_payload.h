@@ -187,6 +187,9 @@ enum notify_type_t {
 	/* IKEv1 Cisco High Availability */
 	UNITY_LOAD_BALANCE = 40501,
 
+	/* EESPv0 negotiation (TBD3, private-use 40960-65535).
+	 * Update when IANA assigns: https://www.iana.org/assignments/ikev2-parameters */
+	EESP_MAX_SUB_SA_ID = 40960,
 	/* BEET mode, not even a draft yet. private use */
 	USE_BEET_MODE = 40961,
 	/* IKE-ME, private use */

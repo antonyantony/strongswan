@@ -248,6 +248,11 @@ struct private_child_create_t {
 	uint16_t other_cpi;
 
 	/**
+	 * Peer's max Sub SA ID received via EESP_MAX_SUB_SA_ID notify
+	 */
+	uint16_t eesp_other_max_sub_sa_id;
+
+	/**
 	 * Data collected to create the CHILD_SA
 	 */
 	child_sa_create_t child;
@@ -1125,11 +1130,29 @@ static bool build_payloads(private_child_create_t *this, message_t *message)
 			break;
 	}
 
-	features = charon->kernel->get_features(charon->kernel);
-	if (!(features & KERNEL_ESP_V3_TFC))
+	if (this->proposal &&
+		this->proposal->get_protocol(this->proposal) == PROTO_EESPv0)
 	{
-		message->add_notify(message, FALSE, ESP_TFC_PADDING_NOT_SUPPORTED,
-							chunk_empty);
+		/* EESPv0: no TFC (use IP-TFS instead, per draft §3.4); no WESP */
+		uint16_t val;
+		uint16_t max_sub_sa_id;
+
+		max_sub_sa_id = this->config->get_eesp_max_sub_sa_id(this->config);
+		if (max_sub_sa_id)
+		{
+			val = htons(max_sub_sa_id);
+			message->add_notify(message, FALSE, EESP_MAX_SUB_SA_ID,
+								chunk_from_thing(val));
+		}
+	}
+	else
+	{
+		features = charon->kernel->get_features(charon->kernel);
+		if (!(features & KERNEL_ESP_V3_TFC))
+		{
+			message->add_notify(message, FALSE, ESP_TFC_PADDING_NOT_SUPPORTED,
+								chunk_empty);
+		}
 	}
 
 	if (!this->rekey && this->child.per_cpu)
@@ -1218,6 +1241,17 @@ static void handle_notify(private_child_create_t *this, notify_payload_t *notify
 						 "transform ID we don't support %N",
 						 ipcomp_transform_names, ipcomp);
 					break;
+			}
+			break;
+		}
+		case EESP_MAX_SUB_SA_ID:
+		{
+			chunk_t data = notify->get_notification_data(notify);
+			if (data.len == 2)
+			{
+				this->eesp_other_max_sub_sa_id = ntohs(*(uint16_t*)data.ptr);
+				DBG2(DBG_IKE, "peer announced EESP max Sub SA ID %u",
+					 this->eesp_other_max_sub_sa_id);
 			}
 			break;
 		}

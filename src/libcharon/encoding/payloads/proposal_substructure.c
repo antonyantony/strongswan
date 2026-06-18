@@ -354,6 +354,7 @@ METHOD(payload_t, verify, status_t,
 			break;
 		case PROTO_AH:
 		case PROTO_ESP:
+		case PROTO_EESPv0:
 			if (this->spi.len != 4)
 			{
 				DBG1(DBG_ENC, "invalid SPI length in %N proposal",
@@ -1501,6 +1502,7 @@ static void set_data(private_proposal_substructure_t *this, proposal_t *proposal
 	{
 		case PROTO_AH:
 		case PROTO_ESP:
+		case PROTO_EESPv0:
 			spi32 = proposal->get_spi(proposal);
 			this->spi = chunk_clone(chunk_from_thing(spi32));
 			this->spi_size = this->spi.len;

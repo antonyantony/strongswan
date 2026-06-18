@@ -313,6 +313,8 @@ static inline uint8_t proto_ike2ip(protocol_id_t protocol)
 			return IPPROTO_ESP;
 		case PROTO_AH:
 			return IPPROTO_AH;
+		case PROTO_EESPv0:
+			return IPPROTO_EESP;
 		default:
 			return protocol;
 	}
