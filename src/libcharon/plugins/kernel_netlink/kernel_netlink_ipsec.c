@@ -3114,6 +3114,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 			  ipsec->cfg.ipcomp.transform != IPCOMP_NONE },
 			{ IPPROTO_ESP, ipsec->cfg.esp.spi, ipsec->cfg.esp.use },
 			{ IPPROTO_AH, ipsec->cfg.ah.spi, ipsec->cfg.ah.use },
+			{ IPPROTO_EESP, ipsec->cfg.eesp.spi, ipsec->cfg.eesp.use },
 		};
 		ipsec_mode_t proto_mode = ipsec->cfg.mode;
 		int count = 0;

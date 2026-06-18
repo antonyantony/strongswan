@@ -172,13 +172,14 @@ struct ipsec_sa_cfg_t {
 	uint32_t reqid;
 	/** number of policies of the same kind (in/out/fwd) attached to SA */
 	uint32_t policy_count;
-	/** details about ESP/AH */
+	/** details about ESP/AH/EESPv0 */
 	struct {
 		/** TRUE if this protocol is used */
 		bool use;
-		/** SPI for ESP/AH */
+		/** SPI for ESP/AH/EESPv0 */
 		uint32_t spi;
-	} esp, ah;
+	} esp, ah, eesp;
+
 	/** details about IPComp */
 	struct {
 		/** the IPComp transform used */

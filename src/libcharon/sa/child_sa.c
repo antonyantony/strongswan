@@ -1045,6 +1045,16 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 								  &int_alg, &size);
 	this->proposal->get_algorithm(this->proposal, EXTENDED_SEQUENCE_NUMBERS,
 								  &esn, NULL);
+	/* EESP_SEQ_NONE means no sequence number field at all — map to FALSE so
+	 * we don't mistakenly set XFRM_STATE_ESN in the kernel */
+	if (esn == EESP_SEQ_NONE)
+	{
+		esn = NO_EXT_SEQ_NUMBERS;
+	}
+	else if (esn == EESP_SEQ_64BIT)
+	{
+		esn = EXT_SEQ_NUMBERS;
+	}
 
 	if (int_alg == AUTH_HMAC_SHA2_256_128 &&
 		this->config->has_option(this->config, OPT_SHA256_96))
@@ -1211,7 +1221,14 @@ static void prepare_sa_cfg(private_child_sa_t *this, ipsec_sa_cfg_t *my_sa,
 	my_sa->ipcomp.cpi = this->my_cpi;
 	other_sa->ipcomp.cpi = this->other_cpi;
 
-	if (this->protocol == PROTO_ESP)
+	if (this->protocol == PROTO_EESPv0)
+	{
+		my_sa->eesp.use = TRUE;
+		my_sa->eesp.spi = this->my_spi;
+		other_sa->eesp.use = TRUE;
+		other_sa->eesp.spi = this->other_spi;
+	}
+	else if (this->protocol == PROTO_ESP)
 	{
 		my_sa->esp.use = TRUE;
 		my_sa->esp.spi = this->my_spi;
