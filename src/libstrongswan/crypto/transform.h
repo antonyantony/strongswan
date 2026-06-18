@@ -53,6 +53,7 @@ enum transform_type_t {
 	ADDITIONAL_KEY_EXCHANGE_5 = 10,
 	ADDITIONAL_KEY_EXCHANGE_6 = 11,
 	ADDITIONAL_KEY_EXCHANGE_7 = 12,
+	SUB_SA_KDF = SUB_SA_KDF_TYPE_ID,
 	HASH_ALGORITHM = 256,
 	RANDOM_NUMBER_GENERATOR = 257,
 	AEAD_ALGORITHM = 258,
@@ -94,16 +95,41 @@ static inline bool is_ke_transform(transform_type_t type)
 }
 
 /**
- * Extended sequence numbers, as in IKEv2 RFC 3.3.2.
+ * Sequence Numbers transform IDs (IKEv2 Transform Type 5, RFC 9827).
+ * Values 0/1 are used for ESP/AH; 1024/1025 are for EESPv0 only.
  */
 enum extended_sequence_numbers_t {
+	/* ESP/AH: 32-bit sequential numbers (formerly "no ESN") */
 	NO_EXT_SEQ_NUMBERS = 0,
-	EXT_SEQ_NUMBERS = 1
+	/* ESP/AH: partially transmitted 64-bit sequential numbers (formerly "ESN") */
+	EXT_SEQ_NUMBERS = 1,
+	/* EESPv0: 64-bit sequential numbers with replay protection */
+	EESP_SEQ_64BIT = EESP_SEQ_64BIT_ID,
+	/* EESPv0: no sequence number field (replay protection disabled) */
+	EESP_SEQ_NONE = EESP_SEQ_NONE_ID,
 };
 
 /**
  * enum strings for extended_sequence_numbers_t.
  */
 extern enum_name_t *extended_sequence_numbers_names;
+
+/**
+ * Sub SA Key Derivation Function algorithms for EESPv0
+ * (IKEv2 Transform Type TBD2, draft-ietf-ipsecme-eesp-ikev2).
+ */
+typedef enum sub_sa_kdf_t sub_sa_kdf_t;
+enum sub_sa_kdf_t {
+	SSKDF_NONE            = 0,
+	SSKDF_HKDF_SHA2_256   = 1,
+	SSKDF_HKDF_SHA2_384   = 2,
+	SSKDF_HKDF_SHA2_512   = 3,
+	SSKDF_AES256_CMAC     = 4,
+};
+
+/**
+ * enum strings for sub_sa_kdf_t.
+ */
+extern enum_name_t *sub_sa_kdf_names;
 
 #endif /** TRANSFORM_H_ @}*/

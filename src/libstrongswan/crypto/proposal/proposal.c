@@ -29,13 +29,15 @@
 #include <crypto/crypters/crypter.h>
 #include <crypto/signers/signer.h>
 
-ENUM(protocol_id_names, PROTO_NONE, PROTO_IPCOMP,
+ENUM_BEGIN(protocol_id_names, PROTO_NONE, PROTO_IPCOMP,
 	"PROTO_NONE",
 	"IKE",
 	"AH",
 	"ESP",
-	"IPCOMP",
-);
+	"IPCOMP");
+ENUM_NEXT(protocol_id_names, PROTO_EESPv0, PROTO_EESPv0, PROTO_IPCOMP,
+	"EESPv0");
+ENUM_END(protocol_id_names, PROTO_EESPv0);
 
 typedef struct private_proposal_t private_proposal_t;
 
@@ -749,7 +751,55 @@ static bool check_proposal(private_proposal_t *this)
 		remove_transform(this, PSEUDO_RANDOM_FUNCTION);
 	}
 
-	if (this->protocol == PROTO_IKE || this->protocol == PROTO_ESP)
+	if (this->protocol == PROTO_EESPv0)
+	{	/* EESPv0: AEAD-only, mandatory SN transform, no integrity algorithm */
+		e = create_enumerator(this, ENCRYPTION_ALGORITHM);
+		while (e->enumerate(e, &alg, &ks))
+		{
+			any_enc = TRUE;
+			if (encryption_algorithm_is_aead(alg))
+			{
+				any_aead = TRUE;
+				continue;
+			}
+			all_aead = FALSE;
+		}
+		e->destroy(e);
+
+		if (!any_enc)
+		{
+			DBG1(DBG_CFG, "an encryption algorithm is mandatory in EESPv0 proposals");
+			return FALSE;
+		}
+		if (!all_aead)
+		{
+			DBG1(DBG_CFG, "only AEAD algorithms are allowed in EESPv0 proposals");
+			return FALSE;
+		}
+		remove_transform(this, INTEGRITY_ALGORITHM);
+		remove_transform(this, PSEUDO_RANDOM_FUNCTION);
+
+		if (!get_algorithm(this, EXTENDED_SEQUENCE_NUMBERS, &alg, NULL))
+		{
+			DBG1(DBG_CFG, "a sequence numbers transform (esn64 or sn-none) is "
+				 "mandatory in EESPv0 proposals");
+			return FALSE;
+		}
+		/* reject ESP SN values in EESP proposals */
+		e = create_enumerator(this, EXTENDED_SEQUENCE_NUMBERS);
+		while (e->enumerate(e, &alg, &ks))
+		{
+			if (alg == NO_EXT_SEQ_NUMBERS || alg == EXT_SEQ_NUMBERS)
+			{
+				DBG1(DBG_CFG, "esn/noesn are not valid in EESPv0 proposals, "
+					 "use esn64 or sn-none");
+				e->destroy(e);
+				return FALSE;
+			}
+		}
+		e->destroy(e);
+	}
+	else if (this->protocol == PROTO_IKE || this->protocol == PROTO_ESP)
 	{
 		e = create_enumerator(this, ENCRYPTION_ALGORITHM);
 		while (e->enumerate(e, &alg, &ks))
@@ -840,6 +890,18 @@ static bool check_proposal(private_proposal_t *this)
 		{	/* ESN not specified, assume not supported */
 			add_algorithm(this, EXTENDED_SEQUENCE_NUMBERS, NO_EXT_SEQ_NUMBERS, 0);
 		}
+		/* reject EESP SN values in ESP/AH proposals */
+		e = create_enumerator(this, EXTENDED_SEQUENCE_NUMBERS);
+		while (e->enumerate(e, &alg, &ks))
+		{
+			if (alg == EESP_SEQ_64BIT || alg == EESP_SEQ_NONE)
+			{
+				DBG1(DBG_CFG, "esn64/sn-none are only valid in EESPv0 proposals");
+				e->destroy(e);
+				return FALSE;
+			}
+		}
+		e->destroy(e);
 	}
 
 	array_compress(this->transforms);
@@ -1342,6 +1404,12 @@ proposal_t *proposal_create_default(protocol_id_t protocol)
 			/* add all supported KE methods, but make them optional */
 			add_supported_ke_methods(this);
 			add_algorithm(this, KEY_EXCHANGE_METHOD, KE_NONE, 0);
+			break;
+		case PROTO_EESPv0:
+			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_AES_GCM_ICV16,  128);
+			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_AES_GCM_ICV16,  256);
+			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_CHACHA20_POLY1305, 0);
+			add_algorithm(this, EXTENDED_SEQUENCE_NUMBERS, EESP_SEQ_64BIT,   0);
 			break;
 		default:
 			break;

@@ -32,8 +32,9 @@ ENUM_BEGIN(transform_type_names, ENCRYPTION_ALGORITHM, ADDITIONAL_KEY_EXCHANGE_7
 	"ADDITIONAL_KEY_EXCHANGE_5",
 	"ADDITIONAL_KEY_EXCHANGE_6",
 	"ADDITIONAL_KEY_EXCHANGE_7");
-ENUM_NEXT(transform_type_names, HASH_ALGORITHM, KEY_DERIVATION_FUNCTION,
-		  ADDITIONAL_KEY_EXCHANGE_7,
+ENUM_NEXT(transform_type_names, SUB_SA_KDF, SUB_SA_KDF, ADDITIONAL_KEY_EXCHANGE_7,
+	"SUB_SA_KDF");
+ENUM_NEXT(transform_type_names, HASH_ALGORITHM, KEY_DERIVATION_FUNCTION, SUB_SA_KDF,
 	"HASH_ALGORITHM",
 	"RANDOM_NUMBER_GENERATOR",
 	"AEAD_ALGORITHM",
@@ -43,9 +44,20 @@ ENUM_NEXT(transform_type_names, HASH_ALGORITHM, KEY_DERIVATION_FUNCTION,
 	"KEY_DERIVATION_FUNCTION");
 ENUM_END(transform_type_names, KEY_DERIVATION_FUNCTION);
 
-ENUM(extended_sequence_numbers_names, NO_EXT_SEQ_NUMBERS, EXT_SEQ_NUMBERS,
+ENUM_BEGIN(extended_sequence_numbers_names, NO_EXT_SEQ_NUMBERS, EXT_SEQ_NUMBERS,
 	"NO_EXT_SEQ",
-	"EXT_SEQ",
+	"EXT_SEQ");
+ENUM_NEXT(extended_sequence_numbers_names, EESP_SEQ_64BIT, EESP_SEQ_NONE, EXT_SEQ_NUMBERS,
+	"EESP_SEQ_64BIT",
+	"EESP_SEQ_NONE");
+ENUM_END(extended_sequence_numbers_names, EESP_SEQ_NONE);
+
+ENUM(sub_sa_kdf_names, SSKDF_NONE, SSKDF_AES256_CMAC,
+	"SSKDF_NONE",
+	"SSKDF_HKDF_SHA2_256",
+	"SSKDF_HKDF_SHA2_384",
+	"SSKDF_HKDF_SHA2_512",
+	"SSKDF_AES256_CMAC",
 );
 
 /**
@@ -77,6 +89,8 @@ enum_name_t* transform_get_enum_names(transform_type_t type)
 			return key_exchange_method_names;
 		case EXTENDED_SEQUENCE_NUMBERS:
 			return extended_sequence_numbers_names;
+		case SUB_SA_KDF:
+			return sub_sa_kdf_names;
 		case EXTENDED_OUTPUT_FUNCTION:
 			return ext_out_function_names;
 		case DETERMINISTIC_RANDOM_BIT_GENERATOR:

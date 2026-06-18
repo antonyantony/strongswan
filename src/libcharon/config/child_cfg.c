@@ -183,6 +183,11 @@ struct private_child_cfg_t {
 	 * DS header field copy mode
 	 */
 	dscp_copy_t copy_dscp;
+
+	/**
+	 * Max Sub SA ID we accept as EESPv0 receiver; 0 = not announced
+	 */
+	uint16_t eesp_max_sub_sa_id;
 };
 
 METHOD(child_cfg_t, get_name, char*,
@@ -557,6 +562,12 @@ METHOD(child_cfg_t, get_replay_window, uint32_t,
 	return this->replay_window;
 }
 
+METHOD(child_cfg_t, get_eesp_max_sub_sa_id, uint16_t,
+	private_child_cfg_t *this)
+{
+	return this->eesp_max_sub_sa_id;
+}
+
 METHOD(child_cfg_t, set_replay_window, void,
 	private_child_cfg_t *this, uint32_t replay_window)
 {
@@ -675,6 +686,7 @@ child_cfg_t *child_cfg_create(char *name, child_cfg_create_t *data)
 			.get_tfc = _get_tfc,
 			.get_manual_prio = _get_manual_prio,
 			.get_interface = _get_interface,
+			.get_eesp_max_sub_sa_id = _get_eesp_max_sub_sa_id,
 			.get_replay_window = _get_replay_window,
 			.set_replay_window = _set_replay_window,
 			.has_option = _has_option,
@@ -714,6 +726,7 @@ child_cfg_t *child_cfg_create(char *name, child_cfg_create_t *data)
 							"%s.replay_window", DEFAULT_REPLAY_WINDOW, lib->ns),
 		.hw_offload = data->hw_offload,
 		.copy_dscp = data->copy_dscp,
+		.eesp_max_sub_sa_id = data->eesp_max_sub_sa_id,
 	);
 
 	return &this->public;

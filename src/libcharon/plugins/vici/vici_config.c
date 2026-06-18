@@ -683,6 +683,15 @@ CALLBACK(parse_esp_proposal, bool,
 }
 
 /**
+ * Parse EESPv0 proposal
+ */
+CALLBACK(parse_eesp_proposal, bool,
+	linked_list_t *out, chunk_t v)
+{
+	return parse_proposal(out, PROTO_EESPv0, v);
+}
+
+/**
  * Parse AH proposal
  */
 CALLBACK(parse_ah_proposal, bool,
@@ -1166,6 +1175,28 @@ CALLBACK(parse_hw_offload, bool,
 	if (parse_map(map, countof(map), &d, v))
 	{
 		*out = d;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * Parse a uint16_t
+ */
+CALLBACK(parse_uint16, bool,
+	uint16_t *out, chunk_t v)
+{
+	char buf[8], *end;
+	u_long l;
+
+	if (!vici_stringify(v, buf, sizeof(buf)))
+	{
+		return FALSE;
+	}
+	l = strtoul(buf, &end, 0);
+	if (*end == 0 && l <= 0xffff)
+	{
+		*out = l;
 		return TRUE;
 	}
 	return FALSE;
@@ -1915,8 +1946,10 @@ CALLBACK(child_li, bool,
 	child_data_t *child, vici_message_t *message, char *name, chunk_t value)
 {
 	parse_rule_t rules[] = {
-		{ "ah_proposals",	parse_ah_proposal,	child->proposals			},
-		{ "esp_proposals",	parse_esp_proposal,	child->proposals			},
+		{ "ah_proposals",		parse_ah_proposal,		child->proposals				},
+		{ "esp_proposals",		parse_esp_proposal,		child->proposals				},
+		{ "eesp_proposals",		parse_eesp_proposal,	child->proposals				},
+		{ "eesp_max_sub_sa_id",	parse_uint16,			&child->cfg.eesp_max_sub_sa_id	},
 		{ "local_ts",		parse_ts,			child->local_ts				},
 		{ "remote_ts",		parse_ts,			child->remote_ts			},
 	};

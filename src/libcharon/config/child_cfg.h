@@ -339,6 +339,13 @@ struct child_cfg_t {
 	char* (*get_interface)(child_cfg_t *this);
 
 	/**
+	 * Get the maximum Sub SA ID we announce to the peer (EESPv0).
+	 *
+	 * @return				max Sub SA ID, 0 if not configured
+	 */
+	uint16_t (*get_eesp_max_sub_sa_id)(child_cfg_t *this);
+
+	/**
 	 * Get anti-replay window size
 	 *
 	 * @return				anti-replay window size
@@ -474,6 +481,8 @@ struct child_cfg_create_t {
 	hw_offload_t hw_offload;
 	/** How to handle the DS header field in tunnel mode */
 	dscp_copy_t copy_dscp;
+	/** Max Sub SA ID we accept as EESPv0 receiver; 0 = not announced */
+	uint16_t eesp_max_sub_sa_id;
 };
 
 /**

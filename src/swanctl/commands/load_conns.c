@@ -34,6 +34,8 @@ static bool is_list_key(char *key)
 		"proposals",
 		"esp_proposals",
 		"ah_proposals",
+		"eesp_proposals",
+		"eesp_max_sub_sa_id",
 		"local_ts",
 		"remote_ts",
 		"vips",
