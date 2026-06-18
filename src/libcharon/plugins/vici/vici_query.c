@@ -378,7 +378,8 @@ static void list_child_ipsec(vici_builder_t *b, child_sa_t *child)
 		}
 		list_ake(b, proposal);
 		if (proposal->get_algorithm(proposal, EXTENDED_SEQUENCE_NUMBERS,
-									&alg, NULL) && alg == EXT_SEQ_NUMBERS)
+									&alg, NULL) &&
+			(alg == EXT_SEQ_NUMBERS || alg == EESP_SEQ_64BIT))
 		{
 			b->add_kv(b, "esn", "1");
 		}

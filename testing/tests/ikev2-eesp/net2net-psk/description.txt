@@ -1,0 +1,10 @@
+A connection between the subnets behind the gateways <b>moon</b> and <b>sun</b> is set up
+using <b>EESPv0</b> (Enhanced ESP, draft-ietf-ipsecme-eesp-03) as the child SA protocol.
+Authentication is based on <b>Preshared Keys</b> (PSK).
+<p/>
+The EESP proposal uses AES-256-GCM (AEAD) with 64-bit sequential sequence numbers
+(<b>esn64</b>), as required by EESPv0.
+<p/>
+Upon successful establishment of the IPsec tunnel, the updown script inserts
+iptables-based firewall rules.  Client <b>alice</b> behind gateway <b>moon</b>
+pings client <b>bob</b> located behind gateway <b>sun</b> to verify connectivity.
