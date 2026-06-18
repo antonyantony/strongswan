@@ -1035,9 +1035,10 @@ static void process_acquire(private_kernel_netlink_ipsec_t *this,
 		case 0:
 		case IPPROTO_ESP:
 		case IPPROTO_AH:
+		case IPPROTO_EESP:
 			break;
 		default:
-			/* acquire for AH/ESP only, not for IPCOMP */
+			/* acquire for ESP/AH/EESP only, not for IPCOMP */
 			return;
 	}
 	data.src = selector2ts(&acquire->sel, TRUE);
@@ -1069,7 +1070,8 @@ static void process_expire(private_kernel_netlink_ipsec_t *this,
 
 	DBG2(DBG_KNL, "received a XFRM_MSG_EXPIRE");
 
-	if (protocol == IPPROTO_ESP || protocol == IPPROTO_AH)
+	if (protocol == IPPROTO_ESP || protocol == IPPROTO_AH ||
+		protocol == IPPROTO_EESP)
 	{
 		dst = xfrm2host(expire->state.family, &expire->state.id.daddr, 0);
 		if (dst)

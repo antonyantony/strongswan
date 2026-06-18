@@ -311,7 +311,8 @@ static void invoke_once(private_updown_listener_t *this, ike_sa_t *ike_sa,
 	push_env(envp, countof(envp), "PLUTO_REQID=%u",
 			 child_sa->get_reqid(child_sa));
 	push_env(envp, countof(envp), "PLUTO_PROTO=%s",
-			 child_sa->get_protocol(child_sa) == PROTO_ESP ? "esp" : "ah");
+			 child_sa->get_protocol(child_sa) == PROTO_ESP    ? "esp"  :
+			 child_sa->get_protocol(child_sa) == PROTO_EESPv0 ? "eesp" : "ah");
 	push_env(envp, countof(envp), "PLUTO_UNIQUEID=%u",
 			 ike_sa->get_unique_id(ike_sa));
 	push_env(envp, countof(envp), "PLUTO_ME=%H", me);
