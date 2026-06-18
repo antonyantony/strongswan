@@ -38,6 +38,12 @@ typedef struct proposal_t proposal_t;
 #include <crypto/key_exchange.h>
 
 /**
+ * IKEv2 Security Protocol Identifier for EESPv0 (TBD1, private-use 201-255).
+ * Update when IANA assigns: https://www.iana.org/assignments/ikev2-parameters
+ */
+#define PROTO_EESPv0_CODEPOINT 249
+
+/**
  * Protocol ID of a proposal.
  */
 enum protocol_id_t {

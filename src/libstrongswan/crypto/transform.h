@@ -28,6 +28,16 @@ typedef enum transform_type_t transform_type_t;
 #include <utils/utils.h>
 
 /**
+ * EESPv0 provisional IKEv2 Transform Type values (draft-ietf-ipsecme-eesp-ikev2).
+ * Update when IANA assigns: https://www.iana.org/assignments/ikev2-parameters
+ */
+/** Transform Type for SSKDF (TBD2, unassigned range 15-240) */
+#define SUB_SA_KDF_TYPE_ID    241
+/** Sequence Numbers transform IDs for EESPv0 (TBD5/TBD6, private-use 1024-65535) */
+#define EESP_SEQ_64BIT_ID    1024
+#define EESP_SEQ_NONE_ID     1025
+
+/**
  * Type of a transform, as in IKEv2 RFC 3.3.2.
  */
 enum transform_type_t {

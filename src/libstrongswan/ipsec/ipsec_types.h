@@ -22,6 +22,15 @@
 #ifndef IPSEC_TYPES_H_
 #define IPSEC_TYPES_H_
 
+/**
+ * IP protocol number for EESPv0 (IANA Protocol Numbers registry).
+ * Provisional value — update when IANA assigns.
+ * https://www.iana.org/assignments/protocol-numbers
+ */
+#ifndef IPPROTO_EESP
+#define IPPROTO_EESP 49
+#endif
+
 typedef enum ipsec_mode_t ipsec_mode_t;
 typedef enum policy_dir_t policy_dir_t;
 typedef enum policy_type_t policy_type_t;
