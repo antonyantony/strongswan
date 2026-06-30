@@ -1864,6 +1864,22 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		}
 	}
 
+	if (data->esp_ping)
+	{
+		DBG1(DBG_KNL, "esp_ping: adding XFRMA_SA_EXTRA_FLAGS=0x4 for %#H -> %#H",
+			 id->src, id->dst);
+		if (!add_uint32(hdr, sizeof(request), XFRMA_SA_EXTRA_FLAGS,
+						XFRM_SA_XFLAG_ESP_PING))
+		{
+			goto failed;
+		}
+	}
+	else
+	{
+		DBG1(DBG_KNL, "esp_ping: NOT set for %#H -> %#H",
+			 id->src, id->dst);
+	}
+
 	switch (mode)
 	{
 		case MODE_TUNNEL:

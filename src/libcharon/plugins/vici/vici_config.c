@@ -1116,6 +1116,15 @@ CALLBACK(parse_opt_icmp, bool,
 }
 
 /**
+ * Parse OPT_ESP_PING option
+ */
+CALLBACK(parse_opt_esp_ping, bool,
+	child_cfg_option_t *out, chunk_t v)
+{
+	return parse_option(out, OPT_ESP_PING, v, TRUE);
+}
+
+/**
  * Parse an action_t
  */
 CALLBACK(parse_action, bool,
@@ -1964,6 +1973,7 @@ CALLBACK(child_kv, bool,
 		{ "copy_ecn",			parse_opt_copy_ecn,	&child->cfg.options					},
 		{ "copy_dscp",			parse_copy_dscp,	&child->cfg.copy_dscp				},
 		{ "icmp",				parse_opt_icmp,		&child->cfg.options					},
+		{ "esp_ping",			parse_opt_esp_ping,	&child->cfg.options					},
 		{ "if_id_in",			parse_if_id,		&child->cfg.if_id_in				},
 		{ "if_id_out",			parse_if_id,		&child->cfg.if_id_out				},
 		{ "label",				parse_label,		&child->cfg.label					},

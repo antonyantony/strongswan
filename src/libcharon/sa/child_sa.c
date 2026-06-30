@@ -252,6 +252,11 @@ struct private_child_sa_t {
 	bool iptfs_dont_frag;
 
 	/**
+	 * Enable encrypted ESP echo on this SA
+	 */
+	bool esp_ping;
+
+	/**
 	 * Action to enforce if peer closes the CHILD_SA
 	 */
 	action_t close_action;
@@ -471,6 +476,18 @@ METHOD(child_sa_t, set_iptfs_dont_fragment, void,
 	private_child_sa_t *this)
 {
 	this->iptfs_dont_frag = TRUE;
+}
+
+METHOD(child_sa_t, set_esp_ping, void,
+	private_child_sa_t *this)
+{
+	this->esp_ping = TRUE;
+}
+
+METHOD(child_sa_t, has_esp_ping, bool,
+	private_child_sa_t *this)
+{
+	return this->esp_ping;
 }
 
 METHOD(child_sa_t, has_encap, bool,
@@ -1122,6 +1139,7 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 		.copy_dscp = this->config->get_copy_dscp(this->config),
 		.iptfs_dont_frag = this->iptfs_dont_frag,
 		.forward_icmp = this->config->has_option(this->config, OPT_FORWARD_ICMP),
+		.esp_ping = this->esp_ping,
 		.label = label_for(this, LABEL_USE_SA),
 		.initiator = initiator,
 		.inbound = inbound,
@@ -2189,6 +2207,8 @@ child_sa_t *child_sa_create(host_t *me, host_t *other, child_cfg_t *config,
 			.get_ipcomp = _get_ipcomp,
 			.set_ipcomp = _set_ipcomp,
 			.set_iptfs_dont_fragment = _set_iptfs_dont_fragment,
+			.set_esp_ping = _set_esp_ping,
+			.has_esp_ping = _has_esp_ping,
 			.get_close_action = _get_close_action,
 			.set_close_action = _set_close_action,
 			.get_dpd_action = _get_dpd_action,

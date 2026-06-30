@@ -297,6 +297,19 @@ struct child_sa_t {
 	void (*set_iptfs_dont_fragment)(child_sa_t *this);
 
 	/**
+	 * Enable encrypted ESP echo on this SA (both inbound and outbound).
+	 * Called after IKE ENCRYPTED_PING_SUPPORTED notify is negotiated.
+	 */
+	void (*set_esp_ping)(child_sa_t *this);
+
+	/**
+	 * Check if encrypted ESP echo is enabled on this SA.
+	 *
+	 * @return			TRUE if ENCRYPTED_PING_SUPPORTED was negotiated
+	 */
+	bool (*has_esp_ping)(child_sa_t *this);
+
+	/**
 	 * Get the action to enforce if the remote peer closes the CHILD_SA.
 	 *
 	 * @return			close action

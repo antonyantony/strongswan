@@ -344,6 +344,10 @@ static void list_child_ipsec(vici_builder_t *b, child_sa_t *child)
 	{
 		b->add_kv(b, "per-cpu-sas", "yes");
 	}
+	if (child->has_esp_ping(child))
+	{
+		b->add_kv(b, "esp-ping", "yes");
+	}
 	cpu = child->get_cpu(child);
 	if (cpu != CPU_ID_MAX)
 	{

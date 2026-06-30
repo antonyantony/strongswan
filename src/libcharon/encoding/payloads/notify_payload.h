@@ -187,6 +187,9 @@ enum notify_type_t {
 	/* IKEv1 Cisco High Availability */
 	UNITY_LOAD_BALANCE = 40501,
 
+	/* encrypted ESP echo, draft-ietf-ipsecme-encrypted-esp-ping, TBD by IANA */
+	ENCRYPTED_PING_SUPPORTED = 40960,
+
 	/* BEET mode, not even a draft yet. private use */
 	USE_BEET_MODE = 40961,
 	/* IKE-ME, private use */
