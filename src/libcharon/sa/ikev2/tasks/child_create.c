@@ -223,6 +223,11 @@ struct private_child_create_t {
 	uint8_t iptfs_flags;
 
 	/**
+	 * Peer sent (or confirmed) ENCRYPTED_PING_SUPPORTED notify
+	 */
+	bool esp_ping;
+
+	/**
 	 * IPsec protocol
 	 */
 	protocol_id_t proto;
@@ -741,6 +746,10 @@ static status_t install_child_sa(private_child_create_t *this)
 	{
 		this->child_sa->set_iptfs_dont_fragment(this->child_sa);
 	}
+	if (this->esp_ping && this->config->has_option(this->config, OPT_ESP_PING))
+	{
+		this->child_sa->set_esp_ping(this->child_sa);
+	}
 	this->child_sa->set_protocol(this->child_sa,
 								 this->proposal->get_protocol(this->proposal));
 
@@ -1196,6 +1205,9 @@ static void handle_notify(private_child_create_t *this, notify_payload_t *notify
 			this->mode = MODE_IPTFS;
 			data = notify->get_notification_data(notify);
 			this->iptfs_flags = *data.ptr;
+			break;
+		case ENCRYPTED_PING_SUPPORTED:
+			this->esp_ping = TRUE;
 			break;
 		case IPCOMP_SUPPORTED:
 		{
@@ -1844,6 +1856,11 @@ METHOD(task_t, build_i, status_t,
 		add_ipcomp_notify(this, message, IPCOMP_DEFLATE);
 	}
 
+	if (this->config->has_option(this->config, OPT_ESP_PING))
+	{
+		message->add_notify(message, FALSE, ENCRYPTED_PING_SUPPORTED, chunk_empty);
+	}
+
 	if (message->get_exchange_type(message) == IKE_AUTH)
 	{
 		charon->bus->narrow(charon->bus, this->child_sa,
@@ -2450,6 +2467,11 @@ METHOD(task_t, build_r, status_t,
 			DBG1(DBG_IKE, "received %N notify but IPComp is disabled, ignoring",
 				 notify_type_names, IPCOMP_SUPPORTED);
 		}
+	}
+
+	if (this->esp_ping && this->config->has_option(this->config, OPT_ESP_PING))
+	{
+		message->add_notify(message, FALSE, ENCRYPTED_PING_SUPPORTED, chunk_empty);
 	}
 
 	switch (narrow_and_check_ts(this, ike_auth))

@@ -257,6 +257,13 @@ if MONOLITHIC
 endif
 endif
 
+if ENCRYPTED_PING_SUPPORTED
+  SUBDIRS += plugins/esp_ping
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/esp_ping/libstrongswan-esp-ping.la
+endif
+endif
+
 if USE_FORECAST
   SUBDIRS += plugins/forecast
 if MONOLITHIC

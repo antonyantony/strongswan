@@ -57,6 +57,7 @@ plugins = \
 	plugins/eap-tnc.opt \
 	plugins/eap-ttls.opt \
 	plugins/error-notify.opt \
+	plugins/esp-ping.opt \
 	plugins/ext-auth.opt \
 	plugins/forecast.opt \
 	plugins/gcrypt.opt \

@@ -1,0 +1,18 @@
+charon.plugins.esp-ping.spis =
+	Comma separated list of SPIs (hex or decimal) to listen for encrypted
+	ESP-ping requests on.
+
+	If empty (the default), the plugin listens for ESP_ECHO_REQUESTs on
+	every SA flagged XFRM_SA_XFLAG_ESP_PING (ENCRYPTED_PING_SUPPORTED),
+	regardless of peer. Set this to restrict listening to specific SAs,
+	e.g. for a monitor scoped to one peer.
+
+charon.plugins.esp-ping.respond = yes
+	Whether to reply to requests (responder) or only observe them
+	(passive monitor).
+
+	When enabled, the plugin opens a second, send-only socket and replies
+	to each request with ESP_ECHO_RESPONSE, on the same SA the request
+	arrived on unless the request's R flag names a different return_spi.
+	When disabled, the plugin only listens and logs, useful for
+	diagnostics without answering on behalf of the responder.

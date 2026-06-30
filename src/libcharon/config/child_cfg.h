@@ -424,6 +424,9 @@ enum child_cfg_option_t {
 
 	/** Enable automatic forwarding of certain ICMP errors */
 	OPT_FORWARD_ICMP = (1<<11),
+
+	/** Enable encrypted ESP echo (esp-ping) on IPTFS SAs */
+	OPT_ESP_PING = (1<<12),
 };
 
 /**

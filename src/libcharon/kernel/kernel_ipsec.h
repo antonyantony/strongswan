@@ -117,6 +117,8 @@ struct kernel_ipsec_add_sa_t {
 	bool iptfs_dont_frag;
 	/** Whether to automatically forward certain ICMP error messages */
 	bool forward_icmp;
+	/** TRUE to enable encrypted ESP echo (draft-ietf-ipsecme-encrypted-esp-ping) */
+	bool esp_ping;
 	/** TRUE if initiator of the exchange creating the SA */
 	bool initiator;
 	/** TRUE if this is an inbound SA */
