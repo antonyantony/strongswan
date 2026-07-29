@@ -17,4 +17,5 @@ DIR=$(cd "$(dirname "$0")" && pwd)
       --disable-blowfish \
       --disable-des \
       --enable-rdrand \
+      --enable-systemd \
       --with-piddir=/run/strongswan
