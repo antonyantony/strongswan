@@ -154,6 +154,14 @@ struct private_child_create_t {
 	bool resource_info_seen;
 
 	/**
+	 * As initiator: the Ephemeral Source Port we picked and are sending
+	 * this CREATE_CHILD_SA from. As responder: the UDP source port the
+	 * CREATE_CHILD_SA request actually arrived on. 0 if unused.
+	 * draft-antony-ipsecme-muse
+	 */
+	uint16_t ephemeral_port;
+
+	/**
 	 * Key exchanges to perform
 	 */
 	struct {
@@ -1708,6 +1716,46 @@ static void prepare_proposed_ts(private_child_create_t *this)
 	}
 }
 
+/**
+ * Pick an Ephemeral Source Port for a new per-resource CHILD_SA, as
+ * initiator. draft-antony-ipsecme-muse Section 6.2: dynamic port range
+ * (49152-65535, RFC 6056), distinct from the source ports of all other
+ * currently active per-resource CHILD_SAs on this IKE_SA. Coordinating
+ * this across different IKE_SAs/peers on the same host is not attempted
+ * here.
+ */
+static uint16_t allocate_ephemeral_port(private_child_create_t *this)
+{
+	enumerator_t *enumerator;
+	child_sa_t *child_sa;
+	uint16_t port;
+	int tries;
+
+	for (tries = 0; tries < 16; tries++)
+	{
+		bool in_use = FALSE;
+
+		port = 0xc000 | (random() & 0xffff);
+
+		enumerator = this->ike_sa->create_child_sa_enumerator(this->ike_sa);
+		while (enumerator->enumerate(enumerator, (void**)&child_sa))
+		{
+			if (child_sa->get_ephemeral_port(child_sa) == port)
+			{
+				in_use = TRUE;
+				break;
+			}
+		}
+		enumerator->destroy(enumerator);
+
+		if (!in_use)
+		{
+			break;
+		}
+	}
+	return port;
+}
+
 METHOD(task_t, build_i, status_t,
 	private_child_create_t *this, message_t *message)
 {
@@ -1766,6 +1814,24 @@ METHOD(task_t, build_i, status_t,
 	{
 		this->child.per_cpu = this->config->has_option(this->config,
 													   OPT_PER_CPU_SAS);
+	}
+	if (!this->rekey && this->child.per_cpu &&
+		message->get_exchange_type(message) == CREATE_CHILD_SA &&
+		this->ike_sa->supports_extension(this->ike_sa, EXT_UDP_EPHEMERAL_PORT) &&
+		this->config->has_option(this->config, OPT_UDP_EPHEMERAL_SOURCE_PORT))
+	{
+		host_t *me;
+
+		this->ephemeral_port = allocate_ephemeral_port(this);
+		this->child.ephemeral_port = this->ephemeral_port;
+
+		/* send this CREATE_CHILD_SA request from the Ephemeral Source Port
+		 * itself -- that's how the responder learns the port, there's no
+		 * notify data for it. draft-antony-ipsecme-muse Section 6.2 */
+		me = message->get_source(message);
+		me = me->clone(me);
+		me->set_port(me, this->ephemeral_port);
+		message->set_source(message, me);
 	}
 
 	this->proposals = this->config->get_proposals(this->config, no_ke, TRUE);
@@ -1940,6 +2006,14 @@ METHOD(task_t, process_r, status_t,
 			return get_nonce(message, &this->other_nonce);
 		case CREATE_CHILD_SA:
 			get_nonce(message, &this->other_nonce);
+			/* remember the UDP source port this request actually arrived
+			 * on -- this is how a per-resource CREATE_CHILD_SA's Ephemeral
+			 * Source Port is learned, per draft-antony-ipsecme-muse
+			 * Section 6.2/6.3. Whether it's actually used is decided later
+			 * in handle_per_resource(), once we know the config/extension
+			 * state; capturing it here is harmless either way. */
+			this->ephemeral_port = message->get_source(message)->get_port(
+											message->get_source(message));
 			break;
 		case IKE_AUTH:
 			/* only handle first AUTH payload, not additional rounds */
@@ -2150,6 +2224,16 @@ static void handle_per_resource(private_child_create_t *this)
 	{
 		this->child.per_cpu = TRUE;
 		this->child.cpu = get_cpu(this);
+
+		if (this->ike_sa->supports_extension(this->ike_sa,
+											 EXT_UDP_EPHEMERAL_PORT) &&
+			this->config->has_option(this->config,
+									 OPT_UDP_EPHEMERAL_SOURCE_PORT))
+		{
+			/* use the port this CREATE_CHILD_SA request actually arrived
+			 * on, captured in process_r(). draft-antony-ipsecme-muse */
+			this->child.ephemeral_port = this->ephemeral_port;
+		}
 	}
 	if (this->child.cpu != CPU_ID_MAX && this->resource_info.len)
 	{
@@ -3012,6 +3096,7 @@ METHOD(task_t, migrate, void,
 	this->other_cpi = 0;
 	this->established = FALSE;
 	this->resource_info_seen = FALSE;
+	this->ephemeral_port = 0;
 	this->public.task.build = _build_i;
 	this->public.task.process = _process_i;
 }

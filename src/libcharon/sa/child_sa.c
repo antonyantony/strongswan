@@ -192,6 +192,12 @@ struct private_child_sa_t {
 	bool per_cpu;
 
 	/**
+	 * Ephemeral Source Port negotiated for this SA, 0 if none.
+	 * draft-antony-ipsecme-muse
+	 */
+	uint16_t ephemeral_port;
+
+	/**
 	 * inbound mark used for this child_sa
 	 */
 	mark_t mark_in;
@@ -861,6 +867,12 @@ METHOD(child_sa_t, get_cpu, uint32_t,
 	return this->cpu;
 }
 
+METHOD(child_sa_t, get_ephemeral_port, uint16_t,
+	private_child_sa_t *this)
+{
+	return this->ephemeral_port;
+}
+
 METHOD(child_sa_t, use_per_cpu, bool,
 	private_child_sa_t *this)
 {
@@ -1002,10 +1014,30 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 
 		if (this->per_cpu && this->encap)
 		{
-			src = src->clone(src);
-			/* accept inbound traffic from any port as we don't know if the
-			 * peer uses random ports or not */
-			src->set_port(src, 0);
+			if (this->ephemeral_port && initiator)
+			{
+				/* we created this per-resource SA and chose this port
+				 * ourselves: bind our inbound side to it, as that's where
+				 * the peer's ESP-in-UDP replies arrive. draft-antony-
+				 * ipsecme-muse */
+				dst = dst->clone(dst);
+				dst->set_port(dst, this->ephemeral_port);
+			}
+			else if (this->ephemeral_port && !initiator)
+			{
+				/* we learned this port from the peer's CREATE_CHILD_SA
+				 * request: expect its ESP-in-UDP traffic from that exact
+				 * port instead of wildcard-accepting any port */
+				src = src->clone(src);
+				src->set_port(src, this->ephemeral_port);
+			}
+			else
+			{
+				src = src->clone(src);
+				/* accept inbound traffic from any port as we don't know if the
+				 * peer uses random ports or not */
+				src->set_port(src, 0);
+			}
 		}
 	}
 	else
@@ -1021,7 +1053,26 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 		{
 			tfc = this->config->get_tfc(this->config);
 		}
-		if (this->per_cpu && this->encap &&
+		if (this->per_cpu && this->encap && this->ephemeral_port)
+		{
+			if (initiator)
+			{
+				/* our own outbound source port is the Ephemeral Source
+				 * Port we chose and sent the CREATE_CHILD_SA request from.
+				 * draft-antony-ipsecme-muse */
+				src = src->clone(src);
+				src->set_port(src, this->ephemeral_port);
+			}
+			else
+			{
+				/* target the initiator's Ephemeral Source Port instead of
+				 * its normal port; our own outbound source port is
+				 * unchanged (normal, not randomized) */
+				dst = dst->clone(dst);
+				dst->set_port(dst, this->ephemeral_port);
+			}
+		}
+		else if (this->per_cpu && this->encap &&
 			this->config->has_option(this->config, OPT_PER_CPU_SAS_ENCAP))
 		{
 			src = src->clone(src);
@@ -2176,6 +2227,7 @@ child_sa_t *child_sa_create(host_t *me, host_t *other, child_cfg_t *config,
 			.get_if_id = _get_if_id,
 			.get_label = _get_label,
 			.get_cpu = _get_cpu,
+			.get_ephemeral_port = _get_ephemeral_port,
 			.set_per_cpu = _set_per_cpu,
 			.use_per_cpu = _use_per_cpu,
 			.get_acquire_seq = _get_acquire_seq,
@@ -2221,6 +2273,7 @@ child_sa_t *child_sa_create(host_t *me, host_t *other, child_cfg_t *config,
 		.label = data->label ? data->label->clone(data->label) : NULL,
 		.cpu = data->cpu,
 		.per_cpu = data->per_cpu,
+		.ephemeral_port = data->ephemeral_port,
 		.seq = data->seq,
 		.install_time = time_monotonic(NULL),
 		.policies_fwd_out = config->has_option(config, OPT_FWD_OUT_POLICIES),

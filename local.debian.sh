@@ -18,4 +18,6 @@ DIR=$(cd "$(dirname "$0")" && pwd)
       --disable-des \
       --enable-rdrand \
       --enable-systemd \
+      --disable-socket-default \
+      --enable-socket-dynamic \
       --with-piddir=/run/strongswan

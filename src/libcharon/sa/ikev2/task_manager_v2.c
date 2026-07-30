@@ -1954,9 +1954,17 @@ METHOD(task_manager_t, process_message, status_t,
 		{
 			return FAILED;
 		}
-		if (!this->ike_sa->supports_extension(this->ike_sa, EXT_MOBIKE))
+		if (!this->ike_sa->supports_extension(this->ike_sa, EXT_MOBIKE) &&
+			!(msg->get_exchange_type(msg) == CREATE_CHILD_SA &&
+			  this->ike_sa->supports_extension(this->ike_sa,
+											   EXT_UDP_EPHEMERAL_PORT)))
 		{	/* only do implicit updates without MOBIKE, and only force
-			 * updates for IKE_AUTH (ports might change due to NAT-T) */
+			 * updates for IKE_AUTH (ports might change due to NAT-T).
+			 * Never for CREATE_CHILD_SA when the UDP Ephemeral Source
+			 * Port mechanism is in use: such a request legitimately
+			 * arrives from a per-resource CHILD_SA's Ephemeral Source
+			 * Port and MUST NOT be mistaken for IKE_SA roaming/NAT
+			 * mapping change (draft-antony-ipsecme-muse Section 6.3). */
 			this->ike_sa->update_hosts(this->ike_sa, me, other,
 									   mid == 1 ? UPDATE_HOSTS_FORCE_ADDRS : 0);
 		}

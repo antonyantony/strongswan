@@ -404,6 +404,14 @@ struct child_sa_t {
 	uint32_t (*get_cpu)(child_sa_t *this);
 
 	/**
+	 * Get the Ephemeral Source Port negotiated for this CHILD_SA, if any.
+	 * draft-antony-ipsecme-muse
+	 *
+	 * @return				Ephemeral Source Port, 0 if none negotiated
+	 */
+	uint16_t (*get_ephemeral_port)(child_sa_t *this);
+
+	/**
 	 * Whether the per-CPU SA feature is enabled for this CHILD_SA.
 	 *
 	 * @return				TRUE if per-CPU SA feature is enabled
@@ -612,6 +620,9 @@ struct child_sa_create_t {
 	uint32_t seq;
 	/** TRUE to enable UDP encapsulation (NAT traversal) */
 	bool encap;
+	/** Optional Ephemeral Source Port, 0 if not used.
+	 * draft-antony-ipsecme-muse */
+	uint16_t ephemeral_port;
 };
 
 /**
