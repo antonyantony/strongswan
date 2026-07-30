@@ -178,6 +178,12 @@ enum ike_extension_t {
 	EXT_IKE_INTERMEDIATE = (1<<17),
 
 	/**
+	 * peer supports multiple UDP source ports for ESP in UDP
+	 * encapsulation, draft-antony-ipsecme-muse
+	 */
+	EXT_UDP_EPHEMERAL_PORT = (1<<18),
+
+	/**
 	 * MSB marker to separate private extensions
 	 */
 	EXT_PRIVATE_MARKER = (1<<31),

@@ -424,6 +424,10 @@ enum child_cfg_option_t {
 
 	/** Enable automatic forwarding of certain ICMP errors */
 	OPT_FORWARD_ICMP = (1<<11),
+
+	/** Use a negotiated, deterministic ephemeral UDP source port for
+	 * per-CPU CHILD_SAs, draft-antony-ipsecme-muse */
+	OPT_UDP_EPHEMERAL_SOURCE_PORT = (1<<12),
 };
 
 /**

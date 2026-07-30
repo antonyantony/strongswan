@@ -199,6 +199,8 @@ enum notify_type_t {
 	ME_RESPONSE = 40968,
 	/* RADIUS attribute received/to send to a AAA backend */
 	RADIUS_ATTRIBUTE = 40969,
+	/* draft-antony-ipsecme-muse, TBD1, private use during development */
+	UDP_EPHEMERAL_SOURCE_PORT = 40970,
 };
 
 /**
