@@ -584,6 +584,7 @@ static void log_child_data(child_data_t *data, char *name)
 	DBG2(DBG_CFG, "   local_ts = %#R", data->local_ts);
 	DBG2(DBG_CFG, "   remote_ts = %#R", data->remote_ts);
 	DBG2(DBG_CFG, "   per_cpu_sas = %s",
+		 has_opt(cfg, OPT_UDP_EPHEMERAL_SOURCE_PORT) ? "muse" :
 		 has_opt(cfg, OPT_PER_CPU_SAS_ENCAP) ? "encap" :
 		 has_opt(cfg, OPT_PER_CPU_SAS) ? "1" : "0");
 	DBG2(DBG_CFG, "   hw_offload = %N", hw_offload_names, cfg->hw_offload);
@@ -1073,6 +1074,8 @@ CALLBACK(parse_opt_cpus, bool,
 {
 	enum_map_t map[] = {
 		{ "encap",	OPT_PER_CPU_SAS|OPT_PER_CPU_SAS_ENCAP	},
+		{ "muse",	OPT_PER_CPU_SAS|OPT_PER_CPU_SAS_ENCAP|
+					OPT_UDP_EPHEMERAL_SOURCE_PORT			},
 	};
 	int d;
 

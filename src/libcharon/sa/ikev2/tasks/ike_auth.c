@@ -841,6 +841,10 @@ METHOD(task_t, build_i, status_t,
 		/* indicate support for RFC 6311 Message ID synchronization */
 		message->add_notify(message, FALSE, IKEV2_MESSAGE_ID_SYNC_SUPPORTED,
 							chunk_empty);
+		/* indicate support for multiple UDP source ports for ESP in UDP
+		 * encapsulation, draft-antony-ipsecme-muse */
+		message->add_notify(message, FALSE, UDP_EPHEMERAL_SOURCE_PORT,
+							chunk_empty);
 		/* only use a PPK in the first round */
 		if (!get_ppk_i(this))
 		{
@@ -1031,6 +1035,11 @@ METHOD(task_t, process_r, status_t,
 		{
 			this->ike_sa->enable_extension(this->ike_sa,
 										   EXT_EAP_ONLY_AUTHENTICATION);
+		}
+		if (message->get_notify(message, UDP_EPHEMERAL_SOURCE_PORT))
+		{
+			this->ike_sa->enable_extension(this->ike_sa,
+										   EXT_UDP_EPHEMERAL_PORT);
 		}
 		if (message->get_notify(message, INITIAL_CONTACT))
 		{
@@ -1390,6 +1399,11 @@ METHOD(task_t, build_r, status_t,
 							lib->ns));
 	}
 
+	/* indicate support for multiple UDP source ports for ESP in UDP
+	 * encapsulation, draft-antony-ipsecme-muse */
+	message->add_notify(message, FALSE, UDP_EPHEMERAL_SOURCE_PORT,
+						chunk_empty);
+
 	this->ike_sa->set_condition(this->ike_sa, COND_AUTHENTICATED, TRUE);
 	return SUCCESS;
 
@@ -1544,6 +1558,10 @@ METHOD(task_t, process_i, status_t,
 				case IKEV2_MESSAGE_ID_SYNC_SUPPORTED:
 					this->ike_sa->enable_extension(this->ike_sa,
 												   EXT_IKE_MESSAGE_ID_SYNC);
+					break;
+				case UDP_EPHEMERAL_SOURCE_PORT:
+					this->ike_sa->enable_extension(this->ike_sa,
+												   EXT_UDP_EPHEMERAL_PORT);
 					break;
 				case PPK_IDENTITY:
 					ppk_id_received = TRUE;

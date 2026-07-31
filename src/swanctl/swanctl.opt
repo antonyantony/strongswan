@@ -1141,6 +1141,13 @@ connections.<conn>.children.<child>.per_cpu_sas = no
 	SAs with UDP-encapsulation always have the source port set to 0 as the
 	peer's random port is unknown if it has this option enabled.
 
+	The value _muse_ behaves like _encap_, but additionally negotiates a
+	deterministic ephemeral UDP source port for per-CPU CHILD_SAs with the
+	peer, per draft-antony-ipsecme-muse (an Internet-Draft; behavior may
+	change before it is finalized). Requires that the peer supports the same
+	mechanism; otherwise falls back to the unnegotiated _encap_ behavior
+	described above.
+
 connections.<conn>.children.<child>.hw_offload = no
 	Enable hardware offload for this CHILD_SA, if supported by the IPsec
 	implementation.
