@@ -452,8 +452,12 @@ static int open_socket(private_socket_dynamic_socket_t *this,
 		DBG1(DBG_NET, "installing IKE bypass policy failed");
 	}
 
-	/* enable UDP decapsulation on each socket */
-	if (!charon->kernel->enable_udp_decap(charon->kernel, fd, family, *port))
+	/* enable UDP decapsulation for the NAT-T socket only, as a plain port
+	 * (e.g. 500, or a MUSE ephemeral port) carries unencapsulated IKE, not
+	 * ESP-in-UDP, and enabling it there makes the kernel misinterpret an
+	 * inbound IKE_SA_INIT as ESP-in-UDP and drop it silently */
+	if (*port == this->natt &&
+		!charon->kernel->enable_udp_decap(charon->kernel, fd, family, *port))
 	{
 		DBG1(DBG_NET, "enabling UDP decapsulation for %s on port %d failed",
 			 family == AF_INET ? "IPv4" : "IPv6", *port);
