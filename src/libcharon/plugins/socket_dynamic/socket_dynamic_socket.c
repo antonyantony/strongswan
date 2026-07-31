@@ -87,6 +87,16 @@ struct private_socket_dynamic_socket_t {
 	 * Maximum packet size to receive
 	 */
 	int max_packet;
+
+	/**
+	 * UDP port for IKE, bound proactively at startup like socket-default
+	 */
+	uint16_t port;
+
+	/**
+	 * UDP port for NAT-T/UDP-encapsulated ESP, bound proactively too
+	 */
+	uint16_t natt;
 };
 
 /**
@@ -639,9 +649,7 @@ METHOD(socket_t, sender, status_t,
 METHOD(socket_t, get_port, uint16_t,
 	private_socket_dynamic_socket_t *this, bool nat_t)
 {
-	/* we return 0 here for users that have no explicit port configured, the
-	 * sender will default to the default port in this case */
-	return 0;
+	return nat_t ? this->natt : this->port;
 }
 
 METHOD(socket_t, supported_families, socket_family_t,
@@ -693,6 +701,10 @@ socket_dynamic_socket_t *socket_dynamic_socket_create()
 		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
 		.max_packet = lib->settings->get_int(lib->settings,
 								"%s.max_packet", PACKET_MAX_DEFAULT, lib->ns),
+		.port = lib->settings->get_int(lib->settings,
+								"%s.port", CHARON_UDP_PORT, lib->ns),
+		.natt = lib->settings->get_int(lib->settings,
+								"%s.port_nat_t", CHARON_NATT_PORT, lib->ns),
 	);
 
 	if (pipe(this->notify) != 0)
@@ -703,6 +715,24 @@ socket_dynamic_socket_t *socket_dynamic_socket_create()
 	}
 
 	this->sockets = hashtable_create((void*)hash, (void*)equals, 8);
+
+	/* bind the standard ports proactively, like socket-default does --
+	 * otherwise nothing calls find_socket() for them until something
+	 * happens to send from that exact port, which never occurs for a
+	 * brand new IKE_SA (its first message would go out from an OS-assigned
+	 * random port instead of the standard one). Failures are tolerated
+	 * (e.g. no IPv6 in this environment), find_socket() will retry lazily
+	 * as normal on first use. */
+	if (this->port)
+	{
+		find_socket(this, AF_INET, this->port);
+		find_socket(this, AF_INET6, this->port);
+	}
+	if (this->natt)
+	{
+		find_socket(this, AF_INET, this->natt);
+		find_socket(this, AF_INET6, this->natt);
+	}
 
 	return &this->public;
 }
