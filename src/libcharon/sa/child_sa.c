@@ -989,6 +989,13 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 	host_t *src, *dst;
 	status_t status;
 	bool update = FALSE;
+	/* the Fallback SA (no CPU assigned, never went through per-resource
+	 * negotiation) should keep the IKE_SA's own port instead of the
+	 * per-CPU wildcard/random-port treatment -- but only for MUSE
+	 * (OPT_UDP_EPHEMERAL_SOURCE_PORT), to leave plain per_cpu_sas=encap's
+	 * existing (if arguably odd) behavior untouched */
+	bool fallback_follows_ike = this->cpu == CPU_ID_MAX &&
+		this->config->has_option(this->config, OPT_UDP_EPHEMERAL_SOURCE_PORT);
 
 	/* BEET requires the bound address from the traffic selectors */
 	my_ts = linked_list_create_from_enumerator(
@@ -1031,13 +1038,15 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 				src = src->clone(src);
 				src->set_port(src, this->ephemeral_port);
 			}
-			else
+			else if (!fallback_follows_ike)
 			{
 				src = src->clone(src);
 				/* accept inbound traffic from any port as we don't know if the
 				 * peer uses random ports or not */
 				src->set_port(src, 0);
 			}
+			/* else: leave the Fallback SA's port alone, following whatever
+			 * the IKE_SA itself negotiated */
 		}
 	}
 	else
@@ -1072,7 +1081,7 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 				dst->set_port(dst, this->ephemeral_port);
 			}
 		}
-		else if (this->per_cpu && this->encap &&
+		else if (this->per_cpu && this->encap && !fallback_follows_ike &&
 			this->config->has_option(this->config, OPT_PER_CPU_SAS_ENCAP))
 		{
 			src = src->clone(src);
@@ -1080,6 +1089,8 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 			 * if it's free or not as we don't receive traffic on it */
 			src->set_port(src, 0xc000 | (random() & 0xffff));
 		}
+		/* else: leave the Fallback SA's port alone, following whatever
+		 * the IKE_SA itself negotiated */
 	}
 
 	DBG2(DBG_CHD, "adding %s %N SA", inbound ? "inbound" : "outbound",
