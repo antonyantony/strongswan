@@ -35,7 +35,7 @@
 #define ESP_PING_SEND_SPI      2   /* cmsg: __be32 SPI to pin this send to */
 #define ESP_ECHO_REQUEST        2  /* AGGFRAG sub-type: initiator->responder */
 #define ESP_ECHO_RESPONSE       3  /* AGGFRAG sub-type: responder->initiator */
-#define ESP_ECHO_FLAG_R      0x80  /* flags bit 7: return_spi follows header */
+#define ESP_ECHO_FLAG_R      0x80  /* flags bit 7: reply requested */
 
 /* Cap on echoed data, matches the plan's suggested default response limit */
 #define ESP_PING_MAX_DATA     512
@@ -46,6 +46,7 @@ struct esp_echo_hdr {
 	uint16_t data_len;
 	uint16_t id;
 	uint16_t seq;
+	uint32_t reply_spi;	/* 0 = any SA; ignored if R=0 */
 } __attribute__((packed));
 
 typedef struct private_esp_ping_responder_t private_esp_ping_responder_t;
@@ -95,7 +96,7 @@ static void send_reply(int send_fd, struct sockaddr *to, socklen_t tolen,
 	struct esp_echo_hdr eh = {
 		.sub_type = ESP_ECHO_RESPONSE,
 		.flags    = 0,	/* R is request-only, never set in a reply */
-		.data_len = req->data_len,
+		.data_len = htons(data_len),
 		.id       = req->id,
 		.seq      = req->seq,
 	};
@@ -149,7 +150,6 @@ static bool receive_on(int fd, int send_fd)
 	};
 	struct cmsghdr *cmsg;
 	uint32_t incoming_spi = 0, reply_spi;
-	uint8_t *payload;
 	size_t payload_len;
 	ssize_t len;
 
@@ -176,28 +176,20 @@ static bool receive_on(int fd, int send_fd)
 		}
 	}
 
-	payload = data;
 	payload_len = (size_t)len - sizeof(eh);
 
-	if (eh.flags & ESP_ECHO_FLAG_R)
-	{
-		if (payload_len < sizeof(uint32_t))
-		{	/* R set but return_spi missing/truncated */
-			return TRUE;
-		}
-		reply_spi = *(uint32_t*)payload;
-		payload += sizeof(uint32_t);
-		payload_len -= sizeof(uint32_t);
+	if (!(eh.flags & ESP_ECHO_FLAG_R))
+	{	/* R=0: one-way probe, the responder MUST NOT reply */
+		DBG2(DBG_NET, "esp-ping: request id 0x%04x seq %u, no reply "
+			 "requested", ntohs(eh.id), ntohs(eh.seq));
+		return TRUE;
 	}
-	else
-	{
-		reply_spi = incoming_spi;
-	}
+	/* reply_spi 0: any SA, preferring the one the request arrived on */
+	reply_spi = eh.reply_spi ?: incoming_spi;
 
-	/* TODO (draft-ietf-ipsecme-encrypted-esp-ping-03 §4.3, deferred in
-	 * turk/esp-ping-plan.md "Return path validation"): validate reply_spi
-	 * against the SADB before replying. Echoes unconditionally for now,
-	 * fine for lab/diagnostic use, not for production. */
+	/* TODO (draft -04 section 5.4, plan Phase 3 Step 5): the kernel's
+	 * pinned send path looks up an outbound SA to the requester with this
+	 * SPI; fall back to the paired SA when that fails. */
 
 	{
 		host_t *src = host_create_from_sockaddr((sockaddr_t*)&from);
@@ -212,7 +204,7 @@ static bool receive_on(int fd, int send_fd)
 	if (send_fd != -1)
 	{
 		send_reply(send_fd, (struct sockaddr*)&from, msg.msg_namelen,
-				  &eh, payload, payload_len, reply_spi);
+				  &eh, data, payload_len, reply_spi);
 	}
 	return TRUE;
 }
